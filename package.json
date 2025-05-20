@@ -1,0 +1,26 @@
+{
+  "name": "skagallery",
+  "version": "1.0.0",
+  "description": "Discord Bot to save images posted in a Discord for later use",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "images",
+    "gallery"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "firebase": "^10.9.0",
+    "node-fetch": "^3.3.2"
+  },
+  "type": "module"
+}
