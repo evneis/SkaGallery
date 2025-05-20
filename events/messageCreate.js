@@ -1,7 +1,7 @@
 import { Events } from 'discord.js';
 import path from 'path';
 import config from '../config.js';
-import { downloadImage } from '../utils/imageHandler.js';
+import { saveImageUrl } from '../utils/imageHandler.js';
 
 export const name = Events.MessageCreate;
 export const once = false;
@@ -22,19 +22,31 @@ export async function execute(message) {
       
       if (validExtensions.includes(fileExtension)) {
         try {
-          // Generate a unique filename with timestamp
-          const timestamp = Date.now();
-          const filename = `${timestamp}-${attachment.name}`;
+          // Store Discord CDN URL with metadata
+          const metadata = {
+            filename: attachment.name,
+            size: attachment.size,
+            width: attachment.width,
+            height: attachment.height,
+            author: {
+              id: message.author.id,
+              username: message.author.username,
+              displayName: message.author.displayName
+            },
+            messageId: message.id,
+            messageLink: message.url,
+            contentType: attachment.contentType
+          };
           
-          // Download and save the image
-          await downloadImage(attachment.url, filename);
+          // Save the URL
+          await saveImageUrl(attachment.url, metadata);
           
           // React to confirm the image was saved
           await message.react('✅');
           
-          console.log(`Image saved: ${filename}`);
+          console.log(`Image URL saved: ${attachment.name}`);
         } catch (error) {
-          console.error('Error saving image:', error);
+          console.error('Error saving image URL:', error);
           await message.react('❌');
         }
       }
@@ -48,20 +60,36 @@ export async function execute(message) {
   if (imageUrls) {
     for (const url of imageUrls) {
       try {
-        // Generate a unique filename with timestamp
-        const timestamp = Date.now();
+        // Check if the URL is a Discord CDN URL
+        const isDiscordCdn = url.includes('cdn.discordapp.com') || 
+                            url.includes('media.discordapp.net');
+        
+        // Store URL with basic metadata
         const urlPath = new URL(url).pathname;
-        const filename = `${timestamp}-${path.basename(urlPath)}`;
+        const filename = path.basename(urlPath);
         
-        // Download and save the image
-        await downloadImage(url, filename);
+        const metadata = {
+          filename,
+          author: {
+            id: message.author.id,
+            username: message.author.username,
+            displayName: message.author.displayName
+          },
+          messageId: message.id,
+          messageLink: message.url,
+          source: 'url',
+          isDiscordCdn
+        };
         
-        // React to confirm the image was saved
+        // Save the URL
+        await saveImageUrl(url, metadata);
+        
+        // React to confirm the URL was saved
         await message.react('✅');
         
-        console.log(`Image saved from URL: ${filename}`);
+        console.log(`Image URL saved from text: ${filename}`);
       } catch (error) {
-        console.error('Error saving image from URL:', error);
+        console.error('Error saving image URL from text:', error);
         await message.react('❌');
       }
     }

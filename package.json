@@ -8,12 +8,18 @@
     "start": "node index.js",
     "dev": "node --watch index.js"
   },
-  "keywords": ["discord", "bot", "images", "gallery"],
+  "keywords": [
+    "discord",
+    "bot",
+    "images",
+    "gallery"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
+    "firebase": "^10.9.0",
     "node-fetch": "^3.3.2"
   },
   "type": "module"

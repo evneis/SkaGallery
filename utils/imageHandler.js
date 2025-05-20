@@ -1,80 +1,192 @@
-import fs from 'fs';
-import path from 'path';
-import { createWriteStream } from 'fs';
-import fetch from 'node-fetch';
-import config from '../config.js';
+import { 
+  getDocs, 
+  addDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  limit, 
+  doc, 
+  getDoc, 
+  orderBy,
+  runTransaction,
+  collection
+} from 'firebase/firestore';
+import { firestore, imagesCollection } from './firebaseConfig.js';
 
-// Ensure storage directory exists
-config.ensureStorageExists();
+// Counter document for tracking the next ID
+const COUNTER_DOC_ID = 'image_counter';
+const countersCollection = collection(firestore, 'counters');
 
 /**
- * Download an image from a URL and save it to the storage directory
- * @param {string} url - The image URL
- * @param {string} filename - The filename to save as
- * @returns {Promise<string>} - The path to the saved image
+ * Initialize the counter document if it doesn't exist
  */
-export async function downloadImage(url, filename) {
-  const imagePath = path.join(config.storageDir, filename);
-  const response = await fetch(url);
+async function ensureCounterExists() {
+  const counterRef = doc(countersCollection, COUNTER_DOC_ID);
+  const counterSnap = await getDoc(counterRef);
   
-  if (!response.ok) {
-    throw new Error(`Failed to download image: ${response.statusText}`);
+  if (!counterSnap.exists()) {
+    await addDoc(countersCollection, { id: COUNTER_DOC_ID, nextId: 1 });
   }
-  
-  const fileStream = createWriteStream(imagePath);
-  await new Promise((resolve, reject) => {
-    response.body.pipe(fileStream);
-    response.body.on('error', reject);
-    fileStream.on('finish', resolve);
-  });
-  
-  return imagePath;
 }
 
+// Ensure counter exists on module load
+ensureCounterExists().catch(error => {
+  console.error('Error initializing counter:', error);
+});
+
 /**
- * Get a random image from the storage directory
- * @returns {Promise<string|null>} - The path to a random image, or null if none exist
+ * Get the next ID and increment the counter
+ * @returns {Promise<number>} - The next ID
  */
-export function getRandomImage() {
-  const files = fs.readdirSync(config.storageDir);
-  const imageFiles = files.filter(file => {
-    const ext = path.extname(file).toLowerCase();
-    return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
-  });
+async function getNextId() {
+  const counterRef = doc(countersCollection, COUNTER_DOC_ID);
   
-  if (imageFiles.length === 0) {
-    return null;
+  try {
+    let nextId = 1;
+    
+    await runTransaction(firestore, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      
+      if (!counterDoc.exists()) {
+        transaction.set(counterRef, { nextId: 2 });
+        nextId = 1;
+      } else {
+        nextId = counterDoc.data().nextId;
+        transaction.update(counterRef, { nextId: nextId + 1 });
+      }
+    });
+    
+    return nextId;
+  } catch (error) {
+    console.error('Error getting next ID:', error);
+    throw error;
   }
+}
+
+/**
+ * Save Discord CDN URL and metadata
+ * @param {string} url - The Discord CDN URL
+ * @param {Object} metadata - Image metadata
+ * @returns {Promise<Object>} - The saved image record
+ */
+export async function saveImageUrl(url, metadata = {}) {
+  const id = await getNextId();
+  const timestamp = Date.now();
   
-  const randomIndex = Math.floor(Math.random() * imageFiles.length);
-  return path.join(config.storageDir, imageFiles[randomIndex]);
-}
-
-/**
- * Get all images in the storage directory
- * @returns {string[]} - Array of image paths
- */
-export function getAllImages() {
-  const files = fs.readdirSync(config.storageDir);
-  return files
-    .filter(file => {
-      const ext = path.extname(file).toLowerCase();
-      return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
-    })
-    .map(file => path.join(config.storageDir, file));
-}
-
-/**
- * Get image metadata (basic version)
- * @param {string} imagePath - Path to the image
- * @returns {Object} - Image metadata
- */
-export function getImageMetadata(imagePath) {
-  const stats = fs.statSync(imagePath);
-  return {
-    filename: path.basename(imagePath),
-    size: stats.size,
-    created: stats.birthtime,
-    modified: stats.mtime
+  const imageRecord = {
+    id,
+    url,
+    timestamp,
+    ...metadata
   };
+  
+  try {
+    await addDoc(imagesCollection, imageRecord);
+    return imageRecord;
+  } catch (error) {
+    console.error('Error saving image to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a random image from the database
+ * @returns {Promise<Object|null>} - Random image record or null if none exist
+ */
+export async function getRandomImage() {
+  try {
+    // Get all images (in a production app with many images, 
+    // you would implement a more efficient random selection)
+    const snapshot = await getDocs(imagesCollection);
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    // Convert to array
+    const images = snapshot.docs.map(doc => ({ 
+      docId: doc.id, 
+      ...doc.data() 
+    }));
+    
+    // Get random image
+    const randomIndex = Math.floor(Math.random() * images.length);
+    return images[randomIndex];
+  } catch (error) {
+    console.error('Error getting random image:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get all images in the database
+ * @returns {Promise<Object[]>} - Array of image records
+ */
+export async function getAllImages() {
+  try {
+    const snapshot = await getDocs(imagesCollection);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error getting all images:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get total count of images
+ * @returns {Promise<number>} - Number of images
+ */
+export async function getImageCount() {
+  try {
+    const snapshot = await getDocs(imagesCollection);
+    return snapshot.size;
+  } catch (error) {
+    console.error('Error counting images:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get image by ID
+ * @param {number} id - Image ID
+ * @returns {Promise<Object|null>} - Image record or null if not found
+ */
+export async function getImageById(id) {
+  try {
+    const q = query(imagesCollection, where("id", "==", id));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() };
+  } catch (error) {
+    console.error('Error getting image by ID:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete image by ID
+ * @param {number} id - Image ID
+ * @returns {Promise<boolean>} - True if deleted, false if not found
+ */
+export async function deleteImage(id) {
+  try {
+    const q = query(imagesCollection, where("id", "==", id));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      return false;
+    }
+    
+    const doc = snapshot.docs[0];
+    await deleteDoc(doc.ref);
+    return true;
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    throw error;
+  }
 } 
