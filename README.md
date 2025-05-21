@@ -70,7 +70,7 @@ The bot uses the following Firestore collections:
 - Node.js 16.9.0 or higher
 - A Discord bot token from [Discord Developer Portal](https://discord.com/developers/applications)
 - A Discord server where you have permission to add bots
-- A Firebase project with Firestore enabled
+- A Firebase project with Cloud Datastore enabled
 
 ## License
 
