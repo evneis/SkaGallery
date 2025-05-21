@@ -3,7 +3,7 @@ Discord Bot to save images posted in a Discord for later use.
 
 ## Features
 
-- Automatically saves images posted in a specified Discord channel
+- Automatically saves images posted in any channel of your Discord server
 - Detects both direct image uploads and image URLs
 - Stores image URLs and metadata in Firebase Firestore
 - Provides slash commands to interact with the gallery:
@@ -27,13 +27,15 @@ Discord Bot to save images posted in a Discord for later use.
    cp template.env .env
    ```
 5. Edit the `.env` file with:
-   - Your Discord bot token, client ID, guild ID, and gallery channel ID
+   - Your Discord bot token and client ID
    - Your Firebase configuration (API key, auth domain, project ID, etc.)
 
-6. Deploy slash commands to your server:
+6. Deploy slash commands:
    ```
    node deploy-commands.js
    ```
+   Note: Commands are registered globally and may take up to an hour to appear in all servers.
+
 7. Start the bot:
    ```
    npm start
