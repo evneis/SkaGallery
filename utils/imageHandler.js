@@ -64,6 +64,7 @@ export async function saveImageUrl(url, metadata = {}) {
     id,
     url,
     timestamp,
+    imageTags: [], // Initialize empty array for tags
     ...metadata
   };
   
