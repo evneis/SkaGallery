@@ -2,6 +2,7 @@ import { Events } from 'discord.js';
 import path from 'path';
 import config from '../config.js';
 import { saveImageUrl } from '../utils/imageHandler.js';
+import fetch from 'node-fetch';
 
 export const name = Events.MessageCreate;
 export const once = false;
@@ -42,7 +43,7 @@ export async function execute(message) {
           await saveImageUrl(attachment.url, metadata);
           
           // React to confirm the image was saved
-          //await message.react('✅');
+          await message.react('✅');
           
           console.log(`Image URL saved: ${attachment.name}`);
         } catch (error) {
@@ -54,19 +55,28 @@ export async function execute(message) {
   }
   
   // Check if the message has embedded images (URLs)
-  const urlRegex = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|jpeg|gif|png|webp)(\?(?:[a-z0-9_]+==[^&]*))?/gi;
+  const urlRegex = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|jpeg|gif|png|webp)(\?(?:[a-z0-9_]+==[^&]*)?)|https?:\/\/tenor\.com\/view\/[a-zA-Z0-9-]+/gi;
   const imageUrls = message.content.match(urlRegex);
   
   if (imageUrls) {
     for (const url of imageUrls) {
       try {
-        // Check if the URL is a Discord CDN URL
+        // Check if the URL is a Discord CDN URL or Tenor URL
         const isDiscordCdn = url.includes('cdn.discordapp.com') || 
                             url.includes('media.discordapp.net');
+        const isTenor = url.includes('tenor.com/view/');
         
-        // Store URL with basic metadata
-        const urlPath = new URL(url).pathname;
-        const filename = path.basename(urlPath);
+        let processedUrl = url;
+        let filename = '';
+        
+        if (isTenor) {
+          // Keep the original Tenor URL for proper Discord embedding
+          const tenorId = url.split('/').pop();
+          filename = `tenor-${tenorId}`;
+        } else {
+          const urlPath = new URL(url).pathname;
+          filename = path.basename(urlPath);
+        }
         
         const metadata = {
           filename,
@@ -77,15 +87,16 @@ export async function execute(message) {
           },
           messageId: message.id,
           messageLink: message.url,
-          source: 'url',
-          isDiscordCdn
+          source: isTenor ? 'tenor' : 'url',
+          isDiscordCdn,
+          isTenor
         };
         
         // Save the URL
-        await saveImageUrl(url, metadata);
+        await saveImageUrl(processedUrl, metadata);
         
         // React to confirm the URL was saved
-        //await message.react('✅');
+        await message.react('✅');
         
         console.log(`Image URL saved from text: ${filename}`);
       } catch (error) {

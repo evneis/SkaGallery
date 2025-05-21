@@ -15,7 +15,12 @@ export async function execute(interaction) {
       return interaction.editReply('No images found in the gallery!');
     }
     
-    // Simply post the image with no other context
+    // If it's a Tenor URL, send it as plain text for proper embedding
+    if (randomImage.isTenor) {
+      return interaction.editReply(randomImage.url);
+    }
+    
+    // For all other images, send as file
     await interaction.editReply({ 
       files: [randomImage.url]
     });
