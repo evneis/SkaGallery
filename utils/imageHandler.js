@@ -81,9 +81,15 @@ export async function saveImageUrl(url, metadata = {}) {
  * Get a random image from the database
  * @returns {Promise<Object|null>} - Random image record or null if none exist
  */
-export async function getRandomImage() {
+
+
+/**
+ * Get a random image ID from the database
+ * @returns {Promise<string|null>} - Random image ID or null if none exist
+ */
+export async function getRandomImageId() {
   try {
-    // Get all images (in a production app with many images, 
+    // Get all image IDs (in a production app with many images, 
     // you would implement a more efficient random selection)
     const snapshot = await imagesCollection.get();
     
@@ -91,17 +97,14 @@ export async function getRandomImage() {
       return null;
     }
     
-    // Convert to array
-    const images = snapshot.docs.map(doc => ({ 
-      docId: doc.id, 
-      ...doc.data() 
-    }));
+    // Get array of document IDs only
+    const imageIds = snapshot.docs.map(doc => doc.id);
     
-    // Get random image
-    const randomIndex = Math.floor(Math.random() * images.length);
-    return images[randomIndex];
+    // Get random ID
+    const randomIndex = Math.floor(Math.random() * imageIds.length);
+    return imageIds[randomIndex];
   } catch (error) {
-    console.error('Error getting random image:', error);
+    console.error('Error getting random image ID:', error);
     throw error;
   }
 }
@@ -136,18 +139,17 @@ export async function getImageCount() {
 
 /**
  * Get image by ID
- * @param {number} id - Image ID
+ * @param {string} docId - Firestore document ID
  * @returns {Promise<Object|null>} - Image record or null if not found
  */
-export async function getImageById(id) {
+export async function getImageById(docId) {
   try {
-    const snapshot = await imagesCollection.where("id", "==", id).get();
+    const doc = await imagesCollection.doc(docId).get();
     
-    if (snapshot.empty) {
+    if (!doc.exists) {
       return null;
     }
     
-    const doc = snapshot.docs[0];
     return { id: doc.id, ...doc.data() };
   } catch (error) {
     console.error('Error getting image by ID:', error);

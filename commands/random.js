@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { getRandomImage } from '../utils/imageHandler.js';
+import { getRandomImageId } from '../utils/imageHandler.js';
+import { postImageById } from '../utils/imagePostHandler.js';
 
 export const data = new SlashCommandBuilder()
   .setName('random')
@@ -9,21 +10,13 @@ export async function execute(interaction) {
   await interaction.deferReply();
   
   try {
-    const randomImage = await getRandomImage();
+    const randomImageId = await getRandomImageId();
     
-    if (!randomImage) {
+    if (!randomImageId) {
       return interaction.editReply('No images found in the gallery!');
     }
     
-    // If it's a Tenor URL, send it as plain text for proper embedding
-    if (randomImage.isTenor) {
-      return interaction.editReply(randomImage.url);
-    }
-    
-    // For all other images, send as file
-    await interaction.editReply({ 
-      files: [randomImage.url]
-    });
+    await postImageById(interaction, randomImageId);
   } catch (error) {
     console.error('Error fetching random image:', error);
     await interaction.editReply('Failed to fetch a random image!');
