@@ -84,9 +84,7 @@ export async function execute(message) {
           },
           messageId: message.id,
           messageLink: message.url,
-          source: isTenor ? 'tenor' : 'url',
-          isDiscordCdn,
-          isTenor
+          source: isTenor ? 'tenor' : (isDiscordCdn ? 'discord' : 'url'),
         };
         
         // Save the URL
