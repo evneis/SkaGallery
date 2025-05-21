@@ -59,8 +59,8 @@ export async function execute(message) {
     for (const url of imageUrls) {
       try {
         // Check if the URL is a Discord CDN URL or Tenor URL
-        // const isDiscordCdn = url.includes('cdn.discordapp.com') || 
-        //                     url.includes('media.discordapp.net');
+        const isDiscordCdn = url.includes('cdn.discordapp.com') || 
+                            url.includes('media.discordapp.net');
         const isTenor = url.includes('tenor.com/view/');
         
         let processedUrl = url;
@@ -84,7 +84,7 @@ export async function execute(message) {
           },
           messageId: message.id,
           messageLink: message.url,
-          source: isTenor ? 'tenor' : 'url',
+          source: isTenor ? 'tenor' : (isDiscordCdn ? 'discord' : 'url'),
         };
         
         // Save the URL
