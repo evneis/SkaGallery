@@ -8,7 +8,6 @@ Discord Bot to save images posted in a Discord for later use.
 - Stores image URLs and metadata in Firebase Firestore
 - Provides slash commands to interact with the gallery:
   - `/random` - View a random image from the gallery
-  - `/count` - See how many images are in the gallery
 
 ## Setup
 
@@ -45,7 +44,6 @@ Discord Bot to save images posted in a Discord for later use.
 The bot uses the following Firestore collections:
 
 - `images` - Stores all image records with the following fields:
-  - `id` - Numeric ID for the image
   - `url` - The Discord CDN URL of the image
   - `timestamp` - When the image was saved
   - `filename` - Original filename
@@ -53,10 +51,6 @@ The bot uses the following Firestore collections:
   - `messageId` - ID of the Discord message containing the image
   - `messageLink` - Link to the original Discord message
   - Various other metadata fields depending on the image source
-
-- `counters` - Stores the counter for image IDs
-  - Contains a single document with ID `image_counter`
-  - Tracks the next available ID for new images
 
 ## Development
 
