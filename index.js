@@ -41,7 +41,9 @@ const commandFiles = fs
 
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
-  const command = await import(filePath);
+  // Convert the filePath to a file URL
+  const fileUrl = `file://${filePath.replace(/\\/g, '/')}`;
+  const command = await import(fileUrl);
   
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
@@ -62,7 +64,9 @@ const eventFiles = fs
 
 for (const file of eventFiles) {
   const filePath = path.join(eventsPath, file);
-  const event = await import(filePath);
+  // Convert the filePath to a file URL
+  const fileUrl = `file://${filePath.replace(/\\/g, '/')}`;
+  const event = await import(fileUrl);
   
   if (event.once) {
     client.once(event.name, (...args) => event.execute(...args));

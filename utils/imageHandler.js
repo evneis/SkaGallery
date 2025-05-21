@@ -1,31 +1,18 @@
-import { 
-  getDocs, 
-  addDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  limit, 
-  doc, 
-  getDoc, 
-  orderBy,
-  runTransaction,
-  collection
-} from 'firebase/firestore';
 import { firestore, imagesCollection } from './firebaseConfig.js';
 
 // Counter document for tracking the next ID
 const COUNTER_DOC_ID = 'image_counter';
-const countersCollection = collection(firestore, 'counters');
+const countersCollection = firestore.collection('counters');
 
 /**
  * Initialize the counter document if it doesn't exist
  */
 async function ensureCounterExists() {
-  const counterRef = doc(countersCollection, COUNTER_DOC_ID);
-  const counterSnap = await getDoc(counterRef);
+  const counterRef = countersCollection.doc(COUNTER_DOC_ID);
+  const counterSnap = await counterRef.get();
   
-  if (!counterSnap.exists()) {
-    await addDoc(countersCollection, { id: COUNTER_DOC_ID, nextId: 1 });
+  if (!counterSnap.exists) {
+    await counterRef.set({ nextId: 1 });
   }
 }
 
@@ -39,15 +26,15 @@ ensureCounterExists().catch(error => {
  * @returns {Promise<number>} - The next ID
  */
 async function getNextId() {
-  const counterRef = doc(countersCollection, COUNTER_DOC_ID);
+  const counterRef = countersCollection.doc(COUNTER_DOC_ID);
   
   try {
     let nextId = 1;
     
-    await runTransaction(firestore, async (transaction) => {
+    await firestore.runTransaction(async (transaction) => {
       const counterDoc = await transaction.get(counterRef);
       
-      if (!counterDoc.exists()) {
+      if (!counterDoc.exists) {
         transaction.set(counterRef, { nextId: 2 });
         nextId = 1;
       } else {
@@ -81,7 +68,7 @@ export async function saveImageUrl(url, metadata = {}) {
   };
   
   try {
-    await addDoc(imagesCollection, imageRecord);
+    await imagesCollection.add(imageRecord);
     return imageRecord;
   } catch (error) {
     console.error('Error saving image to Firestore:', error);
@@ -97,7 +84,7 @@ export async function getRandomImage() {
   try {
     // Get all images (in a production app with many images, 
     // you would implement a more efficient random selection)
-    const snapshot = await getDocs(imagesCollection);
+    const snapshot = await imagesCollection.get();
     
     if (snapshot.empty) {
       return null;
@@ -124,7 +111,7 @@ export async function getRandomImage() {
  */
 export async function getAllImages() {
   try {
-    const snapshot = await getDocs(imagesCollection);
+    const snapshot = await imagesCollection.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error('Error getting all images:', error);
@@ -138,7 +125,7 @@ export async function getAllImages() {
  */
 export async function getImageCount() {
   try {
-    const snapshot = await getDocs(imagesCollection);
+    const snapshot = await imagesCollection.get();
     return snapshot.size;
   } catch (error) {
     console.error('Error counting images:', error);
@@ -153,8 +140,7 @@ export async function getImageCount() {
  */
 export async function getImageById(id) {
   try {
-    const q = query(imagesCollection, where("id", "==", id));
-    const snapshot = await getDocs(q);
+    const snapshot = await imagesCollection.where("id", "==", id).get();
     
     if (snapshot.empty) {
       return null;
@@ -175,15 +161,14 @@ export async function getImageById(id) {
  */
 export async function deleteImage(id) {
   try {
-    const q = query(imagesCollection, where("id", "==", id));
-    const snapshot = await getDocs(q);
+    const snapshot = await imagesCollection.where("id", "==", id).get();
     
     if (snapshot.empty) {
       return false;
     }
     
     const doc = snapshot.docs[0];
-    await deleteDoc(doc.ref);
+    await doc.ref.delete();
     return true;
   } catch (error) {
     console.error('Error deleting image:', error);

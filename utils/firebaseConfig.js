@@ -1,13 +1,31 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection } from 'firebase/firestore';
-import config from '../config.js';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { config } from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
-// Initialize Firebase with configuration from config.js
-const firebaseApp = initializeApp(config.firebase);
+// Load environment variables
+config();
+
+// Set up file paths
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Path to service account file
+const serviceAccountPath = path.join(__dirname, '..', process.env.FIREBASE_CREDENTIAL);
+const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+
+// Initialize Firebase Admin with service account
+const firebaseApp = initializeApp({
+  credential: cert(serviceAccount),
+  databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
+});
+
 const db = getFirestore(firebaseApp);
 
 // Define collections
-export const imagesCollection = collection(db, 'images');
+export const imagesCollection = db.collection('images');
 
 // Export the Firebase app and database instances
 export const app = firebaseApp;
