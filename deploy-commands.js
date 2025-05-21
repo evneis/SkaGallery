@@ -17,7 +17,9 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
-  const command = await import(filePath);
+  // Convert the filePath to a file URL
+  const fileUrl = `file://${filePath.replace(/\\/g, '/')}`;
+  const command = await import(fileUrl);
   
   if ('data' in command && 'execute' in command) {
     commands.push(command.data.toJSON());
