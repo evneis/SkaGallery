@@ -11,9 +11,6 @@ export async function execute(message) {
   // Ignore bot messages
   if (message.author.bot) return;
   
-  // Only process messages in the gallery channel
-  if (message.channelId !== config.galleryChannelId) return;
-  
   // Process attachments for images
   if (message.attachments.size > 0) {
     for (const [, attachment] of message.attachments) {

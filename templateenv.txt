@@ -6,9 +6,9 @@ DISCORD_TOKEN=your_bot_token_here
 # Get this from Discord Developer Portal
 CLIENT_ID=your_client_id_here
 
-# Discord Guild ID (Server ID) (Required)
-# Right-click on your server and click "Copy ID"
-GUILD_ID=your_guild_id_here
+# Discord Guild ID (Optional)
+# Only needed for development to quickly register commands to a test server
+# GUILD_ID=your_guild_id_here
 
 # Gallery Channel ID (Required)
 # Right-click on your channel and click "Copy ID"
