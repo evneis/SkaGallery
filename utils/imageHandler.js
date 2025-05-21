@@ -1,55 +1,5 @@
 import { firestore, imagesCollection } from './firebaseConfig.js';
 
-// Counter document for tracking the next ID
-const COUNTER_DOC_ID = 'image_counter';
-const countersCollection = firestore.collection('counters');
-
-/**
- * Initialize the counter document if it doesn't exist
- */
-async function ensureCounterExists() {
-  const counterRef = countersCollection.doc(COUNTER_DOC_ID);
-  const counterSnap = await counterRef.get();
-  
-  if (!counterSnap.exists) {
-    await counterRef.set({ nextId: 1 });
-  }
-}
-
-// Ensure counter exists on module load
-ensureCounterExists().catch(error => {
-  console.error('Error initializing counter:', error);
-});
-
-/**
- * Get the next ID and increment the counter
- * @returns {Promise<number>} - The next ID
- */
-async function getNextId() {
-  const counterRef = countersCollection.doc(COUNTER_DOC_ID);
-  
-  try {
-    let nextId = 1;
-    
-    await firestore.runTransaction(async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
-      
-      if (!counterDoc.exists) {
-        transaction.set(counterRef, { nextId: 2 });
-        nextId = 1;
-      } else {
-        nextId = counterDoc.data().nextId;
-        transaction.update(counterRef, { nextId: nextId + 1 });
-      }
-    });
-    
-    return nextId;
-  } catch (error) {
-    console.error('Error getting next ID:', error);
-    throw error;
-  }
-}
-
 /**
  * Save Discord CDN URL and metadata
  * @param {string} url - The Discord CDN URL
@@ -57,11 +7,9 @@ async function getNextId() {
  * @returns {Promise<Object>} - The saved image record
  */
 export async function saveImageUrl(url, metadata = {}) {
-  const id = await getNextId();
   const timestamp = Date.now();
   
   const imageRecord = {
-    id,
     url,
     timestamp,
     imageTags: [], // Initialize empty array for tags
@@ -119,20 +67,6 @@ export async function getAllImages() {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error('Error getting all images:', error);
-    throw error;
-  }
-}
-
-/**
- * Get total count of images
- * @returns {Promise<number>} - Number of images
- */
-export async function getImageCount() {
-  try {
-    const snapshot = await imagesCollection.get();
-    return snapshot.size;
-  } catch (error) {
-    console.error('Error counting images:', error);
     throw error;
   }
 }
