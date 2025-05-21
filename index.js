@@ -12,10 +12,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Create storage directory if it doesn't exist
-const storageDir = process.env.STORAGE_DIR || './images';
-if (!fs.existsSync(storageDir)) {
-  fs.mkdirSync(storageDir, { recursive: true });
-}
+//const storageDir = process.env.STORAGE_DIR || './images';
+// if (!fs.existsSync(storageDir)) {
+//   fs.mkdirSync(storageDir, { recursive: true });
+// }
 
 // Create the client instance
 const client = new Client({
