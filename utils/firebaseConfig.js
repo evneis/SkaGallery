@@ -1,3 +1,5 @@
+import admin from 'firebase-admin';
+//import config from '../config.js';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { config } from 'dotenv';
