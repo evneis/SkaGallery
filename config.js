@@ -13,7 +13,7 @@ export default {
   
   // Gallery configuration
   galleryChannelId: process.env.GALLERY_CHANNEL_ID,
-  storageDir: process.env.STORAGE_DIR || './images',
+  //storageDir: process.env.STORAGE_DIR || './images',
   
   // Firebase configuration
   firebaseServiceAccount: {
