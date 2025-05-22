@@ -22,9 +22,9 @@ Discord Bot to save images posted in a Discord for later use.
    - Once created, add a Web App to your project
    - Enable Firestore Database in your project
 
-4. Copy `template.env` to `.env` and fill in your credentials:
+4. Copy `templateenv.txt` to `.env` and fill in your credentials:
    ```
-   cp template.env .env
+   cp templateenv.txt .env
    ```
 5. Edit the `.env` file with:
    - Your Discord bot token and client ID

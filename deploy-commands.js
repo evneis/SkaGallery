@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import botConfig from './config.js';
 
 // Load environment variables
 config();
@@ -33,17 +34,30 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 try {
   console.log(`Started refreshing ${commands.length} application (/) commands.`);
   
-  const data = await rest.put(
-    Routes.applicationGuildCommands(
-      process.env.CLIENT_ID,
-      process.env.GUILD_ID
-    ),
-    //TODO: production deploy commands globally (takes up to 1 hour to update)
-    //Routes.applicationCommands(process.env.CLIENT_ID),
-    { body: commands },
-  );
-  
-  console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+  // Check if we have a guild ID configured
+  if (process.env.GUILD_ID) {
+    console.log(`Deploying commands to guild ${process.env.GUILD_ID}...`);
+    
+    // Deploy to the specified guild
+    const data = await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      { body: commands },
+    );
+    
+    console.log(`Successfully reloaded ${data.length} application (/) commands for guild ${process.env.GUILD_ID}.`);
+  } else {
+    // If no guild ID specified, deploy globally
+    console.log('No guild ID specified. Deploying commands globally (may take up to 1 hour to update).');
+    const data = await rest.put(
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: commands },
+    );
+    
+    console.log(`Successfully reloaded ${data.length} application (/) commands globally.`);
+  }
 } catch (error) {
   console.error(error);
 } 
