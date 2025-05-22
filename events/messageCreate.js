@@ -41,7 +41,7 @@ export async function execute(message) {
             await saveImageUrl(attachment.url, metadata);
             
             // React to confirm the image was saved
-            await message.react('✅');
+            await message.react('❤️');
             
             console.log(`Image URL saved: ${attachment.name}`);
           } catch (error) {
