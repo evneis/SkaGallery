@@ -25,3 +25,7 @@ STORAGE_DIR=./images
 # Firebase Service account credentials
 # Get these from your Firebase project settings
 FIREBASE_CREDENTIAL=firebase_credential_json_file
+
+# Firebase collection prefix (Optional)
+# Use this to separate test data from production data
+# FIREBASE_COLLECTION_PREFIX=test_

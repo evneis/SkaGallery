@@ -67,7 +67,7 @@ The bot uses the following Firestore collections:
 - A Discord bot token from [Discord Developer Portal](https://discord.com/developers/applications)
 - A Discord server where you have permission to add bots
 - A Firebase project with Cloud Datastore enabled
-poke
+
 ## License
 
-ISC4
+ISC
