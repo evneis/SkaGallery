@@ -24,7 +24,7 @@ export async function postImageById(interaction, imageId, options = {}) {
     const finalOptions = { ...defaultOptions, ...options };
     
     // If it's a Tenor URL, send it as plain text for proper embedding
-    if (image.isTenor) {
+    if (image.source === 'tenor') {
       return interaction.editReply(image.url);
     }
 
