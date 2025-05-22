@@ -84,6 +84,12 @@ for (const file of eventFiles) {
 // When the client is ready, run this code (only once)
 client.once(Events.ClientReady, readyClient => {
   console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+  
+  // Set the bot's status
+  readyClient.user.setPresence({
+    activities: [{ name: 'you', type: 3 }],
+    status: 'online',
+  });
 });
 
 // Login to Discord with your client's token
