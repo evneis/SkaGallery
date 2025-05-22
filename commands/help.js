@@ -17,6 +17,9 @@ export async function execute(interaction) {
         '• `/random` - View a random image from the gallery\n' +
         '• `/react` - Get a random reaction image\n' +
         '• `/help` - Display this help message'
+      },
+      { name: '🔍 Reply Commands', value: 
+        '• `/delete` - delete the image you are replying to\n'
       }
     )
     .setFooter({ text: 'SkaGallery | github.com/evneis/SkaGallery', iconURL: interaction.client.user.displayAvatarURL() })

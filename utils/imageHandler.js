@@ -134,4 +134,31 @@ export async function deleteImage(id) {
     console.error('Error deleting image:', error);
     throw error;
   }
+}
+
+/**
+ * Delete image by filename
+ * @param {string} filename - Image filename
+ * @returns {Promise<boolean>} - True if deleted, false if not found
+ */
+export async function deleteImageByFilename(filename) {
+  try {
+    const snapshot = await imagesCollection.where("filename", "==", filename).get();
+    
+    if (snapshot.empty) {
+      return false;
+    }
+    
+    // Delete all matching documents (should be just one if filenames are unique)
+    let deleted = false;
+    for (const doc of snapshot.docs) {
+      await doc.ref.delete();
+      deleted = true;
+    }
+    
+    return deleted;
+  } catch (error) {
+    console.error('Error deleting image by filename:', error);
+    throw error;
+  }
 } 

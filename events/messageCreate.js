@@ -1,7 +1,7 @@
 import { Events } from 'discord.js';
 import path from 'path';
 import config from '../config.js';
-import { saveImageUrl } from '../utils/imageHandler.js';
+import { saveImageUrl, deleteImageByFilename } from '../utils/imageHandler.js';
 import fetch from 'node-fetch';
 
 export const name = Events.MessageCreate;
@@ -11,6 +11,64 @@ export async function execute(message) {
   try {
     // Ignore bot messages
     if (message.author.bot) return;
+    
+    // Check if message is a reply with "/delete" command
+    if (message.reference && message.content.trim().toLowerCase() === '/delete') {
+      try {
+        // Fetch the message being replied to
+        const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
+        
+        // Verify the replied message is from the bot
+        if (!repliedMessage.author.bot) {
+          // await message.reply("You can only delete images posted by the bot.");
+          return;
+        }
+        
+        // Try to find the image filename in the message
+        let filenameToDelete = null;
+        
+        // Check for attachments
+        if (repliedMessage.attachments.size > 0) {
+          const attachment = repliedMessage.attachments.first();
+          filenameToDelete = attachment.name;
+        } 
+        // Check for embeds (for tenor GIFs or other embed types)
+        else if (repliedMessage.embeds.length > 0) {
+          const embed = repliedMessage.embeds[0];
+          
+          // Check if it's a tenor URL
+          if (embed.url && embed.url.includes('tenor.com/view/')) {
+            const tenorId = embed.url.split('/').pop();
+            filenameToDelete = `tenor-${tenorId}`;
+          }
+          // Check for image embeds
+          else if (embed.image) {
+            const urlPath = new URL(embed.image.url).pathname;
+            filenameToDelete = path.basename(urlPath);
+          }
+        }
+        
+        if (!filenameToDelete) {
+          await message.reply("Could not find an image to delete in that message.");
+          return;
+        }
+        
+        // Delete the image from Firebase
+        const isDeleted = await deleteImageByFilename(filenameToDelete);
+        
+        if (isDeleted) {
+          await message.reply(`Successfully deleted image: ${filenameToDelete}`);
+          // Optionally delete the original message
+          // await repliedMessage.delete();
+        } else {
+          await message.reply(`Could not find image "${filenameToDelete}" in the database.`);
+        }
+      } catch (error) {
+        console.error('Error handling delete command:', error);
+        await message.reply('An error occurred while trying to delete the image.');
+      }
+      return;
+    }
     
     // Process attachments for images
     if (message.attachments.size > 0) {
