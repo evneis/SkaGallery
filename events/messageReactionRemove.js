@@ -1,5 +1,6 @@
 import { Events } from 'discord.js';
 import { firestore, imagesCollection } from '../utils/firebaseConfig.js';
+import path from 'path';
 
 export const name = Events.MessageReactionRemove;
 export const once = false;
@@ -22,12 +23,36 @@ export async function execute(reaction, user) {
 
     const message = reaction.message;
 
+    // Look for image attachments in the message
+    const attachment = message.attachments.first();
+    if (!attachment) {
+      console.log('No attachments found in the message');
+      return;
+    }
+
+    // Extract filename using the same approach as in messageCreate.js
+    const url = attachment.url;
+    const isDiscordCdn = url.includes('cdn.discordapp.com') || 
+                         url.includes('media.discordapp.net');
+    const isTenor = url.includes('tenor.com/view/');
+    
+    let filename = '';
+    
+    if (isTenor) {
+      // Keep the original Tenor URL for proper Discord embedding
+      const tenorId = url.split('/').pop();
+      filename = `tenor-${tenorId}`;
+    } else {
+      const urlPath = new URL(url).pathname;
+      filename = path.basename(urlPath);
+    }
+
     try {
-      // Find the image in Firebase using the messageId
-      const snapshot = await imagesCollection.where('messageId', '==', message.id).get();
+      // Find the image in Firebase using the filename instead of messageId
+      const snapshot = await imagesCollection.where('filename', '==', filename).get();
 
       if (snapshot.empty) {
-        console.log(`No image found with messageId: ${message.id}`);
+        console.log(`No image found with filename: ${filename}`);
         return;
       }
 
@@ -46,7 +71,7 @@ export async function execute(reaction, user) {
         
         // Update the document in Firebase
         await doc.ref.update({ imageTags: updatedTags });
-        console.log(`Removed 'react' tag from image with messageId: ${message.id}`);
+        console.log(`Removed 'react' tag from image with filename: ${filename}`);
       }
     } catch (error) {
       console.error('Error updating image tags:', error);
