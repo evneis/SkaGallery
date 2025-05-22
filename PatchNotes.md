@@ -1,5 +1,4 @@
-v0.2
+v0.3
 
-- Handles removing zap reaction
-- Added bot status
-- Development: Deploy script now supports Discord webhook integration
+- Scans for images/gifs it might have missed during expected/unexpected downtime
+    - Handles reactions specific to zap emoji - if new reactions are made then ready.js will need to be updated
