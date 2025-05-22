@@ -26,8 +26,11 @@ const firebaseApp = initializeApp({
 
 const db = getFirestore(firebaseApp);
 
-// Define collections
-export const imagesCollection = db.collection('images');
+// Get collection prefix from environment (if not set, defaults to no prefix)
+const collectionPrefix = process.env.FIREBASE_COLLECTION_PREFIX || '';
+
+// Define collections with environment-specific prefix
+export const imagesCollection = db.collection(`${collectionPrefix}images`);
 
 // Export the Firebase app and database instances
 export const app = firebaseApp;

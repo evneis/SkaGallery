@@ -10,11 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Execute deployment on VM
+        id: deployment
+        continue-on-error: true
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          script_stop: true
           script: |
             cd ~/SkaGallery
             
@@ -35,3 +38,40 @@ jobs:
             # Start/restart with PM2
             /home/satanicpickle23/.nvm/versions/node/v22.16.0/bin/pm2 start index.js --name "skagallery" -- --experimental-specifier-resolution=node
             /home/satanicpickle23/.nvm/versions/node/v22.16.0/bin/pm2 save
+      
+      - name: Check deployment status
+        id: check
+        if: steps.deployment.outcome == 'failure'
+        run: |
+          echo "::set-output name=status::failure"
+          echo "Deployment failed!"
+          exit 1
+      
+      - name: Discord notification on success
+        if: success()
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "SkaGallery Deployment Successful"
+          description: "The deployment to the VM has completed successfully."
+          color: 0x00FF00
+          
+      - name: Discord notification on failure
+        if: failure()
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "SkaGallery Deployment Failed"
+          description: |
+            The deployment to the VM has failed.
+            
+            Error details:
+            ```
+            ${{ toJSON(steps.deployment.outputs) }}
+            ```
+            
+            Please check the full logs at:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          color: 0xFF0000
