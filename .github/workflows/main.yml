@@ -1,0 +1,37 @@
+name: Deploy Discord Bot
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute deployment on VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/SkaGallery
+            
+            # Stop current instance if running
+            pm2 stop skagallery || true
+            
+            # Pull latest changes
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Install dependencies (in case any changed)
+            npm ci --production
+            
+            # Update Discord commands
+            node clear-commands.js
+            node deploy-commands.js
+            
+            # Start/restart with PM2
+            pm2 start index.js --name "skagallery" -- --experimental-specifier-resolution=node
+            pm2 save
