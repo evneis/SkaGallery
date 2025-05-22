@@ -29,7 +29,7 @@ jobs:
             npm ci --production
             
             # Update Discord commands
-            node clear-commands.js
+            # node clear-commands.js # Not necessary, commands are refreshed on deploy-commands.js
             node deploy-commands.js
             
             # Start/restart with PM2
