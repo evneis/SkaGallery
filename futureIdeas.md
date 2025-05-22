@@ -7,6 +7,6 @@
 - User profiles/stats
     - how many images/gifs each person sent
 - Firebase - categorizing based on file type
-- Add reply functionality so users can delete or untag an image
+[x] Add reply functionality so users can delete or untag an image
 
 - Down the line - maybe some automated "last year today"
