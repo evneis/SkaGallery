@@ -1,5 +1,6 @@
 import { Events } from 'discord.js';
 import { firestore, imagesCollection } from '../utils/firebaseConfig.js';
+import path from 'path';
 
 export const name = Events.MessageReactionAdd;
 export const once = false;
@@ -21,13 +22,76 @@ export async function execute(reaction, user) {
     }
 
     const message = reaction.message;
+    
+    // Initialize variables
+    let filename = null;
+    
+    // Check for attachments first
+    if (message.attachments.size > 0) {
+      const attachment = message.attachments.first();
+      const url = attachment.url;
+      
+      const isDiscordCdn = url.includes('cdn.discordapp.com') || 
+                          url.includes('media.discordapp.net');
+      const isTenor = url.includes('tenor.com/view/');
+      
+      if (isTenor) {
+        const tenorId = url.split('/').pop();
+        filename = `tenor-${tenorId}`;
+      } else {
+        const urlPath = new URL(url).pathname;
+        filename = path.basename(urlPath);
+      }
+    } 
+    // If no attachments, check for embedded URLs
+    else if (message.content) {
+      const urlRegex = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|jpeg|gif|png|webp)(\?(?:[a-z0-9_]+==[^&]*)?)|https?:\/\/tenor\.com\/view\/[a-zA-Z0-9-]+/gi;
+      const imageUrls = message.content.match(urlRegex);
+      
+      if (imageUrls && imageUrls.length > 0) {
+        const url = imageUrls[0]; // Use the first URL found
+        
+        const isDiscordCdn = url.includes('cdn.discordapp.com') || 
+                            url.includes('media.discordapp.net');
+        const isTenor = url.includes('tenor.com/view/');
+        
+        if (isTenor) {
+          const tenorId = url.split('/').pop();
+          filename = `tenor-${tenorId}`;
+        } else {
+          const urlPath = new URL(url).pathname;
+          filename = path.basename(urlPath);
+        }
+      }
+    }
+    // Check for embeds (for tenor GIFs or other embed types)
+    else if (message.embeds.length > 0) {
+      const embed = message.embeds[0];
+      
+      // Check if it's a tenor URL
+      if (embed.url && embed.url.includes('tenor.com/view/')) {
+        const tenorId = embed.url.split('/').pop();
+        filename = `tenor-${tenorId}`;
+      }
+      // Check for image embeds
+      else if (embed.image) {
+        const urlPath = new URL(embed.image.url).pathname;
+        filename = path.basename(urlPath);
+      }
+    }
+    
+    // If no filename was found, we can't proceed
+    if (!filename) {
+      console.log('No image or GIF found in the message');
+      return;
+    }
 
     try {
-      // Find the image in Firebase using the messageId
-      const snapshot = await imagesCollection.where('messageId', '==', message.id).get();
+      // Find the image in Firebase using the filename
+      const snapshot = await imagesCollection.where('filename', '==', filename).get();
 
       if (snapshot.empty) {
-        console.log(`No image found with messageId: ${message.id}`);
+        console.log(`No image found with filename: ${filename}`);
         return;
       }
 
@@ -41,7 +105,7 @@ export async function execute(reaction, user) {
         
         // Update the document in Firebase
         await doc.ref.update({ imageTags: updatedTags });
-        console.log(`Added 'react' tag to image with messageId: ${message.id}`);
+        console.log(`Added 'react' tag to image with filename: ${filename}`);
       }
     } catch (error) {
       console.error('Error updating image tags:', error);

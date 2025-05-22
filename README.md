@@ -8,6 +8,11 @@ Discord Bot to save images posted in a Discord for later use.
 - Stores image URLs and metadata in Firebase Firestore
 - Provides slash commands to interact with the gallery:
   - `/random` - View a random image from the gallery
+  - `/react` - View a random image designated as a reaction image from the gallery
+- Provides message reply commands for image management:
+  - Reply with `/delete` to remove an image from the database
+  - Reply with `/untag` to remove the command tag (e.g., 'react') from an image posted using a slash command
+  
 
 ## Setup
 
