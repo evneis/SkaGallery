@@ -17,7 +17,6 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
-          script_stop: true
           script: |
             cd ~/SkaGallery
             
