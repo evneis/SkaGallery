@@ -11,6 +11,8 @@ yarn-error.log
 .env.test.local
 .env.production.local
 *.json
+github-actions-key
+github-actions-key.pub
 
 # Local image storage
 /images/
