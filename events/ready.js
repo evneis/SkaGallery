@@ -117,6 +117,11 @@ async function processChannelHistory(channel, sinceTimestamp) {
         // Skip bot messages
         if (message.author.bot) continue;
         
+        // Check if the message has a zap emoji reaction
+        const hasZapReaction = message.reactions.cache.some(reaction => 
+          reaction.emoji.name === '⚡' && reaction.count > 0
+        );
+        
         // Process image attachments
         if (message.attachments.size > 0) {
           for (const [, attachment] of message.attachments) {
@@ -142,15 +147,28 @@ async function processChannelHistory(channel, sinceTimestamp) {
                   contentType: attachment.contentType
                 };
                 
+                // If message has zap reaction, add the "react" tag
+                if (hasZapReaction) {
+                  metadata.imageTags = ['react'];
+                }
+                
                 // Save the URL
                 await saveImageUrl(attachment.url, metadata);
                 processedImageCount++;
                 
-                console.log(`Recovered missed image: ${attachment.name}`);
+                console.log(`Recovered missed image: ${attachment.name}${hasZapReaction ? ' (with zap reaction)' : ''}`);
               } catch (error) {
                 // Ignore duplicate image errors
                 if (!error.message || !error.message.includes('already exists')) {
                   console.error('Error saving missed image URL:', error);
+                } else if (hasZapReaction) {
+                  // If it's a duplicate but has a zap reaction, update the tags
+                  try {
+                    await updateImageTags(attachment.name, ['react']);
+                    console.log(`Updated existing image with react tag: ${attachment.name}`);
+                  } catch (updateError) {
+                    console.error('Error updating image tags:', updateError);
+                  }
                 }
               }
             }
@@ -163,14 +181,15 @@ async function processChannelHistory(channel, sinceTimestamp) {
         
         if (imageUrls) {
           for (const url of imageUrls) {
+            // Declare these variables outside the try block so they're accessible in the catch block
+            let processedUrl = url;
+            let filename = '';
+            
             try {
               // Check if the URL is a Discord CDN URL or Tenor URL
               const isDiscordCdn = url.includes('cdn.discordapp.com') || 
                                   url.includes('media.discordapp.net');
               const isTenor = url.includes('tenor.com/view/');
-              
-              let processedUrl = url;
-              let filename = '';
               
               if (isTenor) {
                 // Keep the original Tenor URL for proper Discord embedding
@@ -193,15 +212,28 @@ async function processChannelHistory(channel, sinceTimestamp) {
                 source: isTenor ? 'tenor' : (isDiscordCdn ? 'discord' : 'url'),
               };
               
+              // If message has zap reaction, add the "react" tag
+              if (hasZapReaction) {
+                metadata.imageTags = ['react'];
+              }
+              
               // Save the URL
               await saveImageUrl(processedUrl, metadata);
               processedImageCount++;
               
-              console.log(`Recovered missed image URL: ${filename}`);
+              console.log(`Recovered missed image URL: ${filename}${hasZapReaction ? ' (with zap reaction)' : ''}`);
             } catch (error) {
               // Ignore duplicate image errors
               if (!error.message || !error.message.includes('already exists')) {
                 console.error('Error saving missed image URL from text:', error);
+              } else if (hasZapReaction) {
+                // If it's a duplicate but has a zap reaction, update the tags
+                try {
+                  await updateImageTags(filename, ['react']);
+                  console.log(`Updated existing image URL with react tag: ${filename}`);
+                } catch (updateError) {
+                  console.error('Error updating image URL tags:', updateError);
+                }
               }
             }
           }
@@ -218,5 +250,39 @@ async function processChannelHistory(channel, sinceTimestamp) {
     
   } catch (error) {
     console.error(`Error processing channel ${channel.name}:`, error);
+  }
+}
+
+/**
+ * Updates the tags for an existing image
+ * @param {string} filename - The filename of the image
+ * @param {string[]} tagsToAdd - Tags to add to the image
+ * @returns {Promise<boolean>} - True if successful, false otherwise
+ */
+async function updateImageTags(filename, tagsToAdd) {
+  try {
+    // Find the image by filename
+    const snapshot = await imagesCollection.where('filename', '==', filename).limit(1).get();
+    
+    if (snapshot.empty) {
+      return false;
+    }
+    
+    const docRef = snapshot.docs[0].ref;
+    const imageData = snapshot.docs[0].data();
+    
+    // Get current tags or initialize empty array
+    const currentTags = imageData.imageTags || [];
+    
+    // Add new tags (avoiding duplicates)
+    const newTags = [...new Set([...currentTags, ...tagsToAdd])];
+    
+    // Update the document with new tags
+    await docRef.update({ imageTags: newTags });
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating image tags:', error);
+    throw error;
   }
 } 
