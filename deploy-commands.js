@@ -38,6 +38,8 @@ try {
       process.env.CLIENT_ID,
       process.env.GUILD_ID
     ),
+    //TODO: production deploy commands globally (takes up to 1 hour to update)
+    //Routes.applicationCommands(process.env.CLIENT_ID),
     { body: commands },
   );
   
