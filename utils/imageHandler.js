@@ -1,12 +1,35 @@
 import { firestore, imagesCollection } from './firebaseConfig.js';
 
 /**
+ * Check if an image with the given filename already exists
+ * @param {string} filename - The filename to check
+ * @returns {Promise<boolean>} - True if image exists, false otherwise
+ */
+export async function checkImageExists(filename) {
+  try {
+    const snapshot = await imagesCollection.where('filename', '==', filename).limit(1).get();
+    return !snapshot.empty;
+  } catch (error) {
+    console.error('Error checking for existing image:', error);
+    throw error;
+  }
+}
+
+/**
  * Save Discord CDN URL and metadata
  * @param {string} url - The Discord CDN URL
  * @param {Object} metadata - Image metadata
  * @returns {Promise<Object>} - The saved image record
  */
 export async function saveImageUrl(url, metadata = {}) {
+  // Check if image with same filename already exists
+  if (metadata.filename) {
+    const exists = await checkImageExists(metadata.filename);
+    if (exists) {
+      throw new Error(`Image with filename "${metadata.filename}" already exists`);
+    }
+  }
+
   const timestamp = Date.now();
   
   const imageRecord = {
