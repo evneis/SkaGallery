@@ -19,7 +19,8 @@ export async function execute(interaction) {
         '• `/help` - Display this help message'
       },
       { name: '🔍 Reply Commands', value: 
-        '• `/delete` - delete the image you are replying to\n'
+        '• `/delete` - delete the image you are replying to\n' +
+        '• `/untag` - remove the tag from the image you are replying to'
       }
     )
     .setFooter({ text: 'SkaGallery | github.com/evneis/SkaGallery', iconURL: interaction.client.user.displayAvatarURL() })
