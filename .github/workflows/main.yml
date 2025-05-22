@@ -17,7 +17,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
-          script_stop: true
+          command_timeout: 10m
           script: |
             cd ~/SkaGallery
             
@@ -29,7 +29,7 @@ jobs:
             git reset --hard origin/main
             
             # Install dependencies (in case any changed)
-            npm ci --production
+            npm ci --omit=dev --no-audit --no-fund --verbose
             
             # Update Discord commands
             # node clear-commands.js # Not necessary, commands are refreshed on deploy-commands.js
@@ -41,10 +41,10 @@ jobs:
       
       - name: Check deployment status
         id: check
-        if: steps.deployment.outcome == 'failure'
+        if: steps.deployment.outcome == 'failure' || steps.deployment.conclusion == 'timed_out'
         run: |
           echo "::set-output name=status::failure"
-          echo "Deployment failed!"
+          echo "Deployment failed or timed out!"
           exit 1
       
       - name: Discord notification on success
