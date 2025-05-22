@@ -19,7 +19,7 @@ jobs:
             cd ~/SkaGallery
             
             # Stop current instance if running
-            pm2 stop skagallery || true
+            /home/satanicpickle23/.nvm/versions/node/v22.16.0/bin/pm2 stop skagallery || true
             
             # Pull latest changes
             git fetch origin main
@@ -33,5 +33,5 @@ jobs:
             node deploy-commands.js
             
             # Start/restart with PM2
-            pm2 start index.js --name "skagallery" -- --experimental-specifier-resolution=node
-            pm2 save
+            /home/satanicpickle23/.nvm/versions/node/v22.16.0/bin/pm2 start index.js --name "skagallery" -- --experimental-specifier-resolution=node
+            /home/satanicpickle23/.nvm/versions/node/v22.16.0/bin/pm2 save
