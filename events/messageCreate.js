@@ -102,7 +102,7 @@ export async function execute(message) {
           await saveImageUrl(processedUrl, metadata);
           
           // React to confirm the URL was saved
-          await message.react('✅');
+          await message.react('❤️');
           
           console.log(`Image URL saved from text: ${filename}`);
         } catch (error) {
