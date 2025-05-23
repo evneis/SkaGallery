@@ -26,12 +26,12 @@ export async function execute(message) {
         }
         
         // Try to find the image filename in the message
-        let filenameToDelete = null;
-        
+        let itemToDelete = null;
+        let isTenor = false;
         // Check for attachments
         if (repliedMessage.attachments.size > 0) {
           const attachment = repliedMessage.attachments.first();
-          filenameToDelete = attachment.name;
+          itemToDelete = attachment.description;
         } 
         // Check for embeds (for tenor GIFs or other embed types)
         else if (repliedMessage.embeds.length > 0) {
@@ -39,30 +39,31 @@ export async function execute(message) {
           
           // Check if it's a tenor URL
           if (embed.url && embed.url.includes('tenor.com/view/')) {
+            isTenor = true;
             const tenorId = embed.url.split('/').pop();
-            filenameToDelete = `tenor-${tenorId}`;
+            itemToDelete = `tenor-${tenorId}`;
           }
           // Check for image embeds
           else if (embed.image) {
             const urlPath = new URL(embed.image.url).pathname;
-            filenameToDelete = path.basename(urlPath);
+            itemToDelete = path.basename(urlPath);
           }
         }
         
-        if (!filenameToDelete) {
+        if (!itemToDelete) {
           await message.reply("Could not find an image to delete in that message.");
           return;
         }
         
         // Delete the image from Firebase
-        const isDeleted = await deleteImageByFilename(filenameToDelete);
+        const isDeleted = await deleteImageByFilename(itemToDelete, isTenor);
         
         if (isDeleted) {
-          await message.reply(`Successfully deleted image: ${filenameToDelete}`);
+          await message.reply(`Successfully deleted image: ${itemToDelete}`);
           // Optionally delete the original message
           // await repliedMessage.delete();
         } else {
-          await message.reply(`Could not find image "${filenameToDelete}" in the database.`);
+          await message.reply(`Could not find image "${itemToDelete}" in the database.`);
         }
       } catch (error) {
         console.error('Error handling delete command:', error);
@@ -85,11 +86,11 @@ export async function execute(message) {
         
         // Try to find the image filename in the message
         let filename = null;
-        
+        let isTenor = false;
         // Check for attachments
         if (repliedMessage.attachments.size > 0) {
           const attachment = repliedMessage.attachments.first();
-          filename = attachment.name;
+          filename = attachment.description;
         } 
         // Check for embeds (for tenor GIFs or other embed types)
         else if (repliedMessage.embeds.length > 0) {
@@ -97,6 +98,7 @@ export async function execute(message) {
           
           // Check if it's a tenor URL
           if (embed.url && embed.url.includes('tenor.com/view/')) {
+            isTenor = true;
             const tenorId = embed.url.split('/').pop();
             filename = `tenor-${tenorId}`;
           }
@@ -121,16 +123,31 @@ export async function execute(message) {
         }
         
         // Find the image in the database using the filename
-        const snapshot = await imagesCollection.where('filename', '==', filename).get();
+        let imageData, docRef;
         
-        if (snapshot.empty) {
-          await message.reply(`Could not find image "${filename}" in the database.`);
-          return;
+        if(isTenor) {
+          const snapshot = await imagesCollection.where('filename', '==', filename).get();
+          
+          if (snapshot.empty) {
+            await message.reply(`Could not find image "${filename}" in the database.`);
+            return;
+          }
+          
+          // Get the first matching document
+          const doc = snapshot.docs[0];
+          imageData = doc.data();
+          docRef = doc.ref;
+        } else {
+          docRef = imagesCollection.doc(filename);
+          const doc = await docRef.get();
+          
+          if (!doc.exists) {
+            await message.reply(`Could not find image "${filename}" in the database.`);
+            return;
+          }
+          
+          imageData = doc.data();
         }
-        
-        // Get the first matching document
-        const doc = snapshot.docs[0];
-        const imageData = doc.data();
         
         // Check if the image has this tag
         if (!imageData.imageTags.includes(commandUsed)) {
@@ -142,7 +159,7 @@ export async function execute(message) {
         const updatedTags = imageData.imageTags.filter(tag => tag !== commandUsed);
         
         // Update the document in Firebase
-        await doc.ref.update({ imageTags: updatedTags });
+        await docRef.update({ imageTags: updatedTags });
         
         await message.reply(`Successfully removed the '${commandUsed}' tag from the image.`);
       } catch (error) {
@@ -188,12 +205,12 @@ export async function execute(message) {
             console.error('Error saving image URL:', error);
             try {
               // Check if it's a duplicate image error
-              if (error.message && error.message.includes('already exists')) {
+              /*if (error.message && error.message.includes('already exists')) {
                 //await message.react('🔄'); // Use a different reaction for duplicates
                 console.log(`Duplicate image detected: ${attachment.name}`);
-              } else {
+              } else {*/
                 await message.react('❌');
-              }
+              //}
             } catch (reactionError) {
               console.error('Error adding reaction:', reactionError);
             }
@@ -248,10 +265,10 @@ export async function execute(message) {
         } catch (error) {
           console.error('Error saving image URL from text:', error);
           try {
-            // Check if it's a duplicate image error
-            if (error.message && error.message.includes('already exists')) {
+            // Check for duplicates only for Tenor GIFs, allow duplicates for other images
+            if (isTenor && error.message && error.message.includes('already exists')) {
               //await message.react('🔄'); // Use a different reaction for duplicates
-              console.log(`Duplicate image detected: ${filename}`);
+              console.log(`Duplicate Tenor GIF detected: ${filename}`);
             } else {
               await message.react('❌');
             }

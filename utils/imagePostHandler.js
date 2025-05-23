@@ -1,4 +1,5 @@
 import { getImageById } from './imageHandler.js';
+import { AttachmentBuilder } from 'discord.js';
 
 /**
  * Posts an image to a Discord interaction/channel using its ID
@@ -28,8 +29,12 @@ export async function postImageById(interaction, imageId, options = {}) {
       return interaction.editReply(image.url);
     }
 
+    // Create attachment with image ID as alt text
+    const attachment = new AttachmentBuilder(image.url)
+      .setDescription(`${image.id}`);
+
     const messagePayload = {
-      files: [image.url],
+      files: [attachment],
       ephemeral: finalOptions.ephemeral
     };
 

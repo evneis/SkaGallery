@@ -23,7 +23,7 @@ export async function checkImageExists(filename) {
  */
 export async function saveImageUrl(url, metadata = {}) {
   // Check if image with same filename already exists
-  if (metadata.filename) {
+  if (metadata.filename && url.includes('tenor')) {
     const exists = await checkImageExists(metadata.filename);
     if (exists) {
       throw new Error(`Image with filename "${metadata.filename}" already exists`);
@@ -31,14 +31,14 @@ export async function saveImageUrl(url, metadata = {}) {
   }
 
   const timestamp = Date.now();
-  
+
   const imageRecord = {
     url,
     timestamp,
     imageTags: [], // Initialize empty array for tags
     ...metadata
   };
-  
+
   try {
     await imagesCollection.add(imageRecord);
     return imageRecord;
@@ -63,14 +63,14 @@ export async function getRandomImageId() {
     // Get all image IDs (in a production app with many images, 
     // you would implement a more efficient random selection)
     const snapshot = await imagesCollection.get();
-    
+
     if (snapshot.empty) {
       return null;
     }
-    
+
     // Get array of document IDs only
     const imageIds = snapshot.docs.map(doc => doc.id);
-    
+
     // Get random ID
     const randomIndex = Math.floor(Math.random() * imageIds.length);
     return imageIds[randomIndex];
@@ -102,11 +102,11 @@ export async function getAllImages() {
 export async function getImageById(docId) {
   try {
     const doc = await imagesCollection.doc(docId).get();
-    
+
     if (!doc.exists) {
       return null;
     }
-    
+
     return { id: doc.id, ...doc.data() };
   } catch (error) {
     console.error('Error getting image by ID:', error);
@@ -122,11 +122,11 @@ export async function getImageById(docId) {
 export async function deleteImage(id) {
   try {
     const snapshot = await imagesCollection.where("id", "==", id).get();
-    
+
     if (snapshot.empty) {
       return false;
     }
-    
+
     const doc = snapshot.docs[0];
     await doc.ref.delete();
     return true;
@@ -139,23 +139,39 @@ export async function deleteImage(id) {
 /**
  * Delete image by filename
  * @param {string} filename - Image filename
+ * @param {boolean} isTenor - True if image is a Tenor GIF, false otherwise
  * @returns {Promise<boolean>} - True if deleted, false if not found
  */
-export async function deleteImageByFilename(filename) {
+export async function deleteImageByFilename(filename, isTenor) {
   try {
-    const snapshot = await imagesCollection.where("filename", "==", filename).get();
-    
-    if (snapshot.empty) {
-      return false;
-    }
-    
-    // Delete all matching documents (should be just one if filenames are unique)
     let deleted = false;
-    for (const doc of snapshot.docs) {
-      await doc.ref.delete();
+    
+    if (isTenor) {
+      // Query by filename field for Tenor GIFs
+      const snapshot = await imagesCollection.where("filename", "==", filename).get();
+      
+      if (snapshot.empty) {
+        return false;
+      }
+      
+      // Delete all matching documents
+      for (const doc of snapshot.docs) {
+        await doc.ref.delete();
+        deleted = true;
+      }
+    } else {
+      // For regular images, we use the filename as document ID
+      const docRef = imagesCollection.doc(filename);
+      const doc = await docRef.get();
+      
+      if (!doc.exists) {
+        return false;
+      }
+      
+      await docRef.delete();
       deleted = true;
     }
-    
+
     return deleted;
   } catch (error) {
     console.error('Error deleting image by filename:', error);

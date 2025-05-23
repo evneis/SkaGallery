@@ -29,7 +29,7 @@ jobs:
             git reset --hard origin/main
             
             # Install dependencies (in case any changed)
-            npm ci --production --no-audit --no-fund --verbose
+            npm ci --omit=dev --no-audit --no-fund --verbose
             
             # Update Discord commands
             # node clear-commands.js # Not necessary, commands are refreshed on deploy-commands.js
