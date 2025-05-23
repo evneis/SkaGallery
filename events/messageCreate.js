@@ -248,13 +248,13 @@ export async function execute(message) {
         } catch (error) {
           console.error('Error saving image URL from text:', error);
           try {
-            // Check if it's a duplicate image error
-            /*if (error.message && error.message.includes('already exists')) {
+            // Check for duplicates only for Tenor GIFs, allow duplicates for other images
+            if (isTenor && error.message && error.message.includes('already exists')) {
               //await message.react('🔄'); // Use a different reaction for duplicates
-              console.log(`Duplicate image detected: ${filename}`);
-            } else {*/
+              console.log(`Duplicate Tenor GIF detected: ${filename}`);
+            } else {
               await message.react('❌');
-            //}
+            }
           } catch (reactionError) {
             console.error('Error adding reaction:', reactionError);
           }
