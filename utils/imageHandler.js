@@ -23,7 +23,7 @@ export async function checkImageExists(filename) {
  */
 export async function saveImageUrl(url, metadata = {}) {
   // Check if image with same filename already exists
-  if (metadata.filename) {
+  if (metadata.filename && url.includes('tenor')) {
     const exists = await checkImageExists(metadata.filename);
     if (exists) {
       throw new Error(`Image with filename "${metadata.filename}" already exists`);
