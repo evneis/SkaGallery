@@ -86,11 +86,11 @@ export async function execute(message) {
         
         // Try to find the image filename in the message
         let filename = null;
-        
+        let isTenor = false;
         // Check for attachments
         if (repliedMessage.attachments.size > 0) {
           const attachment = repliedMessage.attachments.first();
-          filename = attachment.name;
+          filename = attachment.description;
         } 
         // Check for embeds (for tenor GIFs or other embed types)
         else if (repliedMessage.embeds.length > 0) {
@@ -98,6 +98,7 @@ export async function execute(message) {
           
           // Check if it's a tenor URL
           if (embed.url && embed.url.includes('tenor.com/view/')) {
+            isTenor = true;
             const tenorId = embed.url.split('/').pop();
             filename = `tenor-${tenorId}`;
           }
@@ -122,16 +123,31 @@ export async function execute(message) {
         }
         
         // Find the image in the database using the filename
-        const snapshot = await imagesCollection.where('filename', '==', filename).get();
+        let imageData, docRef;
         
-        if (snapshot.empty) {
-          await message.reply(`Could not find image "${filename}" in the database.`);
-          return;
+        if(isTenor) {
+          const snapshot = await imagesCollection.where('filename', '==', filename).get();
+          
+          if (snapshot.empty) {
+            await message.reply(`Could not find image "${filename}" in the database.`);
+            return;
+          }
+          
+          // Get the first matching document
+          const doc = snapshot.docs[0];
+          imageData = doc.data();
+          docRef = doc.ref;
+        } else {
+          docRef = imagesCollection.doc(filename);
+          const doc = await docRef.get();
+          
+          if (!doc.exists) {
+            await message.reply(`Could not find image "${filename}" in the database.`);
+            return;
+          }
+          
+          imageData = doc.data();
         }
-        
-        // Get the first matching document
-        const doc = snapshot.docs[0];
-        const imageData = doc.data();
         
         // Check if the image has this tag
         if (!imageData.imageTags.includes(commandUsed)) {
@@ -143,7 +159,7 @@ export async function execute(message) {
         const updatedTags = imageData.imageTags.filter(tag => tag !== commandUsed);
         
         // Update the document in Firebase
-        await doc.ref.update({ imageTags: updatedTags });
+        await docRef.update({ imageTags: updatedTags });
         
         await message.reply(`Successfully removed the '${commandUsed}' tag from the image.`);
       } catch (error) {
