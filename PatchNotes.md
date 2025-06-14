@@ -1,5 +1,5 @@
-v0.3.5
+v0.5
 
-- Removed preventing "duplicate" images being saved to database
-    - Pasted images often have same filename (e.g image.png) despite being different images. Will revisit in the future
-- /delete and /untag works with adjusted duplication logic (thanks alt-text!)
+- Changed image saving
+    - Images are now saved to local storage with a file path in the firebase entry URL
+    - This is a fix for Discord CDN URLs getting corrupted or deleted over time
