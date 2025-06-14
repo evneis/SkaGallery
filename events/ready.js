@@ -1,6 +1,6 @@
 import { Events } from 'discord.js';
 import { imagesCollection } from '../utils/firebaseConfig.js';
-import { saveImageUrl } from '../utils/imageHandler.js';
+import { saveImageUrl, getLastProcessedTimestamp } from '../utils/imageHandler.js';
 import path from 'path';
 
 export const name = Events.ClientReady;
@@ -22,15 +22,15 @@ async function scanMissedImages(client) {
   try {
     console.log('Starting scan for missed images...');
     
-    // Get the timestamp of the most recent image in Firestore
-    const latestTimestamp = await getLatestImageTimestamp();
+    // Get the last processed timestamp from the timestamp collection
+    const lastProcessedTimestamp = await getLastProcessedTimestamp();
     
-    if (!latestTimestamp) {
-      console.log('No existing images found. Skipping scan.');
+    if (!lastProcessedTimestamp) {
+      console.log('No last processed timestamp found. Skipping scan for safety.');
       return;
     }
     
-    console.log(`Most recent image timestamp: ${new Date(latestTimestamp).toISOString()}`);
+    console.log(`Last processed timestamp: ${new Date(lastProcessedTimestamp).toISOString()}`);
     
     // Get all guilds the bot is connected to
     for (const [guildId, guild] of client.guilds.cache) {
@@ -43,7 +43,7 @@ async function scanMissedImages(client) {
       
       // Process each channel
       for (const [channelId, channel] of textChannels) {
-        await processChannelHistory(channel, latestTimestamp);
+        await processChannelHistory(channel, lastProcessedTimestamp);
       }
     }
     
@@ -53,24 +53,7 @@ async function scanMissedImages(client) {
   }
 }
 
-/**
- * Retrieves the timestamp of the most recent image
- * @returns {Promise<number|null>} The latest timestamp or null if no images exist
- */
-async function getLatestImageTimestamp() {
-  try {
-    const snapshot = await imagesCollection.orderBy('timestamp', 'desc').limit(1).get();
-    
-    if (snapshot.empty) {
-      return null;
-    }
-    
-    return snapshot.docs[0].data().timestamp;
-  } catch (error) {
-    console.error('Error getting latest image timestamp:', error);
-    return null;
-  }
-}
+
 
 /**
  * Process message history for a channel since the given timestamp

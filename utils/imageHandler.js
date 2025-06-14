@@ -1,4 +1,4 @@
-import { firestore, imagesCollection } from './firebaseConfig.js';
+import { firestore, imagesCollection, timestampCollection } from './firebaseConfig.js';
 import fs from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
@@ -74,7 +74,7 @@ async function downloadAndSaveImage(url, filename) {
     
     // Generate unique filename to avoid overwrites
     const uniqueFilename = generateUniqueFilename(filename);
-    const buffer = await response.buffer();
+    const buffer = await response.arrayBuffer();
     const filePath = path.join(imagesDir, uniqueFilename);
     
     await fs.promises.writeFile(filePath, buffer);
@@ -141,6 +141,9 @@ export async function saveImageUrl(url, metadata = {}) {
 
   try {
     await imagesCollection.add(imageRecord);
+    
+    await updateLastProcessedTimestamp(timestamp);
+    
     return imageRecord;
   } catch (error) {
     console.error('Error saving image to Firestore:', error);
@@ -289,5 +292,42 @@ export async function deleteImageByFilename(filename, isTenor) {
   } catch (error) {
     console.error('Error deleting image by filename:', error);
     throw error;
+  }
+}
+
+/**
+ * Update the last processed timestamp in Firebase
+ * @param {number} timestamp - The timestamp to save
+ * @returns {Promise<void>}
+ */
+export async function updateLastProcessedTimestamp(timestamp) {
+  try {
+    const timestampDoc = timestampCollection.doc('lastProcessed');
+    await timestampDoc.set({ 
+      timestamp,
+      updatedAt: Date.now() 
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error updating last processed timestamp:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get the last processed timestamp from Firebase
+ * @returns {Promise<number|null>} The last processed timestamp or null if not found
+ */
+export async function getLastProcessedTimestamp() {
+  try {
+    const timestampDoc = await timestampCollection.doc('lastProcessed').get();
+    
+    if (!timestampDoc.exists) {
+      return null;
+    }
+    
+    return timestampDoc.data().timestamp;
+  } catch (error) {
+    console.error('Error getting last processed timestamp:', error);
+    return null;
   }
 } 
