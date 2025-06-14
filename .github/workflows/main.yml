@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -43,7 +44,7 @@ jobs:
         id: check
         if: steps.deployment.outcome == 'failure' || steps.deployment.conclusion == 'timed_out'
         run: |
-          echo "::set-output name=status::failure"
+          echo "status=failure" >> $GITHUB_OUTPUT
           echo "Deployment failed or timed out!"
           exit 1
       
