@@ -1,4 +1,18 @@
 import { firestore, imagesCollection } from './firebaseConfig.js';
+import fs from 'fs';
+import path from 'path';
+import fetch from 'node-fetch';
+import { fileURLToPath } from 'url';
+
+// Get directory path for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Create images directory if it doesn't exist
+const imagesDir = path.join(__dirname, '..', 'images');
+if (!fs.existsSync(imagesDir)) {
+  fs.mkdirSync(imagesDir, { recursive: true });
+}
 
 /**
  * Check if an image with the given filename already exists
@@ -16,8 +30,68 @@ export async function checkImageExists(filename) {
 }
 
 /**
+ * Generate a unique filename if the original already exists
+ * @param {string} originalFilename - The original filename
+ * @returns {string} - A unique filename
+ */
+function generateUniqueFilename(originalFilename) {
+  const filePath = path.join(imagesDir, originalFilename);
+  
+  // If file doesn't exist, use original name
+  if (!fs.existsSync(filePath)) {
+    return originalFilename;
+  }
+  
+  // Parse filename and extension
+  const parsedPath = path.parse(originalFilename);
+  const baseName = parsedPath.name;
+  const extension = parsedPath.ext;
+  
+  // Find a unique filename by incrementing number
+  let counter = 1;
+  let uniqueFilename;
+  
+  do {
+    uniqueFilename = `${baseName}${counter}${extension}`;
+    counter++;
+  } while (fs.existsSync(path.join(imagesDir, uniqueFilename)));
+  
+  return uniqueFilename;
+}
+
+/**
+ * Download an image from URL and save it locally
+ * @param {string} url - The image URL to download
+ * @param {string} filename - The filename to save as
+ * @returns {Promise<{filePath: string, uniqueFilename: string}>} - The local file path and unique filename used
+ */
+async function downloadAndSaveImage(url, filename) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Generate unique filename to avoid overwrites
+    const uniqueFilename = generateUniqueFilename(filename);
+    const buffer = await response.buffer();
+    const filePath = path.join(imagesDir, uniqueFilename);
+    
+    await fs.promises.writeFile(filePath, buffer);
+    
+    return {
+      filePath,
+      uniqueFilename
+    };
+  } catch (error) {
+    console.error('Error downloading image:', error);
+    throw error;
+  }
+}
+
+/**
  * Save Discord CDN URL and metadata
- * @param {string} url - The Discord CDN URL
+ * @param {string} url - The Discord CDN URL or Tenor URL
  * @param {Object} metadata - Image metadata
  * @returns {Promise<Object>} - The saved image record
  */
@@ -31,13 +105,39 @@ export async function saveImageUrl(url, metadata = {}) {
   }
 
   const timestamp = Date.now();
+  let imageRecord;
 
-  const imageRecord = {
-    url,
-    timestamp,
-    imageTags: [], // Initialize empty array for tags
-    ...metadata
-  };
+  // Check if it's a Tenor URL
+  if (url.includes('tenor')) {
+    // For Tenor GIFs, save the URL as before
+    imageRecord = {
+      url,
+      timestamp,
+      imageTags: [], // Initialize empty array for tags
+      ...metadata
+    };
+  } else {
+    // For regular images, download and save locally
+    try {
+      const { filePath, uniqueFilename } = await downloadAndSaveImage(url, metadata.filename);
+      imageRecord = {
+        url: filePath, // Store local file path instead of URL
+        timestamp,
+        imageTags: [], // Initialize empty array for tags
+        ...metadata,
+        filename: uniqueFilename // Update filename to the unique one used
+      };
+    } catch (error) {
+      console.error('Error downloading image, falling back to URL storage:', error);
+      // Fallback to storing URL if download fails
+      imageRecord = {
+        url,
+        timestamp,
+        imageTags: [],
+        ...metadata
+      };
+    }
+  }
 
   try {
     await imagesCollection.add(imageRecord);
@@ -166,6 +266,19 @@ export async function deleteImageByFilename(filename, isTenor) {
       
       if (!doc.exists) {
         return false;
+      }
+      
+      const imageData = doc.data();
+      
+      // If the image is stored locally, delete the file
+      if (imageData.url && !imageData.url.includes('tenor') && fs.existsSync(imageData.url)) {
+        try {
+          await fs.promises.unlink(imageData.url);
+          console.log(`Deleted local file: ${imageData.url}`);
+        } catch (fileError) {
+          console.error('Error deleting local file:', fileError);
+          // Continue with database deletion even if file deletion fails
+        }
       }
       
       await docRef.delete();
