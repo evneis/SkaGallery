@@ -1,9 +1,10 @@
 import { Events } from 'discord.js';
 import path from 'path';
 import config from '../config.js';
-import { saveImageUrl, deleteImageByFilename } from '../utils/imageHandler.js';
+import { saveImageUrl, deleteImageByFilename, updateLastProcessedTimestamp } from '../utils/imageHandler.js';
 import { firestore, imagesCollection } from '../utils/firebaseConfig.js';
 import fetch from 'node-fetch';
+import fs from 'fs';
 
 export const name = Events.MessageCreate;
 export const once = false;

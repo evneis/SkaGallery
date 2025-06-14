@@ -31,6 +31,7 @@ const collectionPrefix = process.env.FIREBASE_COLLECTION_PREFIX || '';
 
 // Define collections with environment-specific prefix
 export const imagesCollection = db.collection(`${collectionPrefix}images`);
+export const timestampCollection = db.collection(`${collectionPrefix}timestamp`);
 
 // Export the Firebase app and database instances
 export const app = firebaseApp;
