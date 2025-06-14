@@ -74,7 +74,7 @@ async function downloadAndSaveImage(url, filename) {
     
     // Generate unique filename to avoid overwrites
     const uniqueFilename = generateUniqueFilename(filename);
-    const buffer = await response.arrayBuffer();
+    const buffer = Buffer.from(await response.arrayBuffer());
     const filePath = path.join(imagesDir, uniqueFilename);
     
     await fs.promises.writeFile(filePath, buffer);
