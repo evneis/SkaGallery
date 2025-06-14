@@ -1,5 +1,6 @@
 import { getImageById } from './imageHandler.js';
 import { AttachmentBuilder } from 'discord.js';
+import fs from 'fs';
 
 /**
  * Posts an image to a Discord interaction/channel using its ID
@@ -25,13 +26,21 @@ export async function postImageById(interaction, imageId, options = {}) {
     const finalOptions = { ...defaultOptions, ...options };
     
     // If it's a Tenor URL, send it as plain text for proper embedding
-    if (image.source === 'tenor') {
+    if (image.url.includes('tenor')) {
       return interaction.editReply(image.url);
     }
 
-    // Create attachment with image ID as alt text
-    const attachment = new AttachmentBuilder(image.url)
-      .setDescription(`${image.id}`);
+    // Check if the URL is a local file path (doesn't contain "tenor")
+    let attachment;
+    if (!image.url.includes('tenor') && fs.existsSync(image.url)) {
+      // It's a local file path, read from local storage
+      attachment = new AttachmentBuilder(image.url)
+        .setDescription(`${image.id}`);
+    } else {
+      // It's a URL (fallback case), use URL
+      attachment = new AttachmentBuilder(image.url)
+        .setDescription(`${image.id}`);
+    }
 
     const messagePayload = {
       files: [attachment],
