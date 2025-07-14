@@ -10,12 +10,13 @@ export async function execute(interaction) {
     .setTitle('SkaGallery Help')
     .setDescription('SkaGallery automatically saves images posted in your Discord server for later use.')
     .addFields(
-      { name: '📸 What Is This?', value: 'Any image posted will be saved in the gallery' },
+      { name: '📸 What Is This?', value: 'This bot will save any image/gif posted in the server will be saved to the SkaGallery™ which can then be used with various commands.' },
       { name: '⚡ Reaction Images', value: 'React to any image with the ⚡ (zap) emoji to designate it as a reaction image. These can be accessed using the `/react` command.' },
       { name: '\u200B', value: '\u200B' }, // Empty field as divider
       { name: '🔍 Available Commands', value: 
         '• `/random` - View a random image from the gallery\n' +
         '• `/react` - Get a random reaction image\n' +
+        '• `/collage @user` - Create a 3x3 collage of images from a user (excludes GIFs)\n' +
         '• `/help` - Display this help message'
       },
       { name: '🔍 Reply Commands', value: 
