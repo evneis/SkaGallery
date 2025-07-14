@@ -190,6 +190,17 @@ export async function saveImageUrl(url, metadata = {}) {
     
     await updateLastProcessedTimestamp(timestamp);
     
+    // Update user statistics if author information is available
+    if (imageRecord.author && imageRecord.author.id) {
+      try {
+        const { updateUserStatsOnUpload } = await import('./statsManager.js');
+        await updateUserStatsOnUpload(imageRecord);
+      } catch (statsError) {
+        console.error('Error updating user stats:', statsError);
+        // Don't throw error - stats tracking shouldn't break image saving
+      }
+    }
+    
     return imageRecord;
   } catch (error) {
     console.error('Error saving image to Firestore:', error);
@@ -294,6 +305,7 @@ export async function deleteImage(id) {
 export async function deleteImageByFilename(filename, isTenor) {
   try {
     let deleted = false;
+    let deletedImageData = null;
     
     if (isTenor) {
       // Query by filename field for Tenor GIFs
@@ -305,8 +317,20 @@ export async function deleteImageByFilename(filename, isTenor) {
       
       // Delete all matching documents
       for (const doc of snapshot.docs) {
+        deletedImageData = doc.data();
         await doc.ref.delete();
         deleted = true;
+        
+        // Update stats for deletion
+        if (deletedImageData.author && deletedImageData.author.id) {
+          try {
+            const { updateUserStatsOnDelete } = await import('./statsManager.js');
+            await updateUserStatsOnDelete(deletedImageData);
+          } catch (statsError) {
+            console.error('Error updating user stats on deletion:', statsError);
+            // Don't throw error - stats tracking shouldn't break image deletion
+          }
+        }
       }
     } else {
       // For regular images, we use the filename as document ID
@@ -318,6 +342,7 @@ export async function deleteImageByFilename(filename, isTenor) {
       }
       
       const imageData = doc.data();
+      deletedImageData = imageData;
       
       // If the image is stored locally, delete the file
       if (imageData.url && !imageData.url.includes('tenor') && fs.existsSync(imageData.url)) {
@@ -332,6 +357,17 @@ export async function deleteImageByFilename(filename, isTenor) {
       
       await docRef.delete();
       deleted = true;
+      
+      // Update stats for deletion
+      if (deletedImageData.author && deletedImageData.author.id) {
+        try {
+          const { updateUserStatsOnDelete } = await import('./statsManager.js');
+          await updateUserStatsOnDelete(deletedImageData);
+        } catch (statsError) {
+          console.error('Error updating user stats on deletion:', statsError);
+          // Don't throw error - stats tracking shouldn't break image deletion
+        }
+      }
     }
 
     return deleted;

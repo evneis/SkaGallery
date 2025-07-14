@@ -13,3 +13,7 @@
 
 
 - Down the line - maybe some automated "last year today"
+
+
+- Collage Updates
+    - Allow choosing different sizes of collages
