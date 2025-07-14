@@ -66,26 +66,72 @@ function generateUniqueFilename(originalFilename) {
  * @returns {Promise<{filePath: string, uniqueFilename: string}>} - The local file path and unique filename used
  */
 async function downloadAndSaveImage(url, filename) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Downloading image (attempt ${attempt}/${maxRetries}): ${url}`);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        timeout: 30000 // 30 second timeout
+      });
+
+      if (!response.ok) {
+        // Handle specific HTTP status codes
+        if (response.status === 403) {
+          console.warn(`Access forbidden (403) for ${url}. This might be due to expired Discord CDN link or anti-bot measures.`);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+            continue;
+          }
+        } else if (response.status === 429) {
+          console.warn(`Rate limited (429) for ${url}. Waiting before retry...`);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt * 2));
+            continue;
+          }
+        } else if (response.status >= 500) {
+          console.warn(`Server error (${response.status}) for ${url}. Retrying...`);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+            continue;
+          }
+        }
+        
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+      }
+      
+      // Generate unique filename to avoid overwrites
+      const uniqueFilename = generateUniqueFilename(filename);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const filePath = path.join(imagesDir, uniqueFilename);
+      
+      await fs.promises.writeFile(filePath, buffer);
+      
+      console.log(`Successfully downloaded image: ${uniqueFilename}`);
+      return {
+        filePath,
+        uniqueFilename
+      };
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.error(`Failed to download image after ${maxRetries} attempts:`, error);
+        throw error;
+      } else {
+        console.warn(`Download attempt ${attempt} failed, retrying in ${retryDelay * attempt}ms:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+      }
     }
-    
-    // Generate unique filename to avoid overwrites
-    const uniqueFilename = generateUniqueFilename(filename);
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const filePath = path.join(imagesDir, uniqueFilename);
-    
-    await fs.promises.writeFile(filePath, buffer);
-    
-    return {
-      filePath,
-      uniqueFilename
-    };
-  } catch (error) {
-    console.error('Error downloading image:', error);
-    throw error;
   }
 }
 

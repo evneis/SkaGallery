@@ -226,11 +226,12 @@ export async function execute(message) {
     
     if (imageUrls) {
       for (const url of imageUrls) {
+        // Check if the URL is a Discord CDN URL or Tenor URL
+        const isDiscordCdn = url.includes('cdn.discordapp.com') || 
+                            url.includes('media.discordapp.net');
+        const isTenor = url.includes('tenor.com/view/');
+        
         try {
-          // Check if the URL is a Discord CDN URL or Tenor URL
-          const isDiscordCdn = url.includes('cdn.discordapp.com') || 
-                              url.includes('media.discordapp.net');
-          const isTenor = url.includes('tenor.com/view/');
           
           let processedUrl = url;
           let filename = '';
