@@ -17,6 +17,7 @@ export async function execute(interaction) {
         '• `/random` - View a random image from the gallery\n' +
         '• `/react` - Get a random reaction image\n' +
         '• `/collage @user` - Create a 3x3 collage of images from a user (excludes GIFs)\n' +
+        '• `/stats` - View user and server statistics\n' +
         '• `/help` - Display this help message'
       },
       { name: '🔍 Reply Commands', value: 
