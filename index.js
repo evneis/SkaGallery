@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, Collection, Partials } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Collection, Partials, ActivityType } from 'discord.js';
 import { config } from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -87,7 +87,7 @@ client.once(Events.ClientReady, readyClient => {
   
   // Set the bot's status
   readyClient.user.setPresence({
-    activities: [{ name: 'you', type: 3 }],
+    activities: [{ name: 'you', type: ActivityType.Watching }],
     status: 'online',
   });
 });
