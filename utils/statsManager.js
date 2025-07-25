@@ -7,6 +7,55 @@ const collectionPrefix = process.env.FIREBASE_COLLECTION_PREFIX || '';
 // Define stats collections
 export const userStatsCollection = firestore.collection(`${collectionPrefix}userStats`);
 export const serverStatsCollection = firestore.collection(`${collectionPrefix}serverStats`);
+export const weeklyStatsCollection = firestore.collection(`${collectionPrefix}weeklyStats`);
+
+/**
+ * Get the current week's start timestamp (Monday at 00:00:00 UTC)
+ * @returns {number} Start timestamp of current week
+ */
+export function getCurrentWeekStart() {
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() - daysToMonday);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday.getTime();
+}
+
+/**
+ * Get the next week's start timestamp
+ * @returns {number} Start timestamp of next week
+ */
+export function getNextWeekStart() {
+  const currentWeekStart = getCurrentWeekStart();
+  return currentWeekStart + (7 * 24 * 60 * 60 * 1000); // Add 7 days
+}
+
+/**
+ * Get days remaining until next reset
+ * @returns {number} Days remaining (can be decimal)
+ */
+export function getDaysUntilReset() {
+  const now = Date.now();
+  const nextReset = getNextWeekStart();
+  const msRemaining = nextReset - now;
+  return msRemaining / (1000 * 60 * 60 * 24);
+}
+
+/**
+ * Get the week identifier (YYYY-WW format)
+ * @param {number} timestamp - Optional timestamp, defaults to current time
+ * @returns {string} Week identifier
+ */
+export function getWeekIdentifier(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  const year = date.getUTCFullYear();
+  const weekStart = getCurrentWeekStart();
+  const weekDate = new Date(weekStart);
+  const weekNumber = Math.ceil((weekDate.getUTCDate() + weekDate.getUTCDay()) / 7);
+  return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
+}
 
 /**
  * Initialize or update user stats when an image is uploaded
@@ -60,6 +109,9 @@ export async function updateUserStatsOnUpload(imageData) {
         transaction.update(userStatsRef, updatedStats);
       }
     });
+    
+    // Update weekly stats (non-blocking)
+    updateWeeklyStatsAsync(imageData);
     
     // Schedule server stats update (non-blocking)
     updateServerStatsAsync();
@@ -180,6 +232,235 @@ export async function getTopUsers(statField = 'uploadCount', limit = 10) {
 }
 
 /**
+ * Get top users for weekly leaderboard
+ * @param {number} limit - Number of top users to return
+ * @returns {Array} Top users array with weekly stats
+ */
+export async function getWeeklyTopUsers(limit = 10) {
+  try {
+    const currentWeek = getWeekIdentifier();
+    const weeklyStatsRef = weeklyStatsCollection.doc(currentWeek);
+    const weeklyStatsDoc = await weeklyStatsRef.get();
+    
+    if (!weeklyStatsDoc.exists) {
+      return [];
+    }
+    
+    const weeklyStats = weeklyStatsDoc.data();
+    const userStats = weeklyStats.userStats || {};
+    
+    // Convert to array and sort by upload count
+    const topUsers = Object.entries(userStats)
+      .map(([userId, stats]) => ({
+        userId,
+        ...stats
+      }))
+      .sort((a, b) => b.uploadCount - a.uploadCount)
+      .slice(0, limit);
+    
+    return topUsers;
+  } catch (error) {
+    console.error('Error getting weekly top users:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get weekly stats for a specific user
+ * @param {string} userId - Discord user ID
+ * @returns {Object|null} Weekly stats for the user or null if not found
+ */
+export async function getUserWeeklyStats(userId) {
+  try {
+    const currentWeek = getWeekIdentifier();
+    const weeklyStatsRef = weeklyStatsCollection.doc(currentWeek);
+    const weeklyStatsDoc = await weeklyStatsRef.get();
+    
+    if (!weeklyStatsDoc.exists) {
+      return null;
+    }
+    
+    const weeklyStats = weeklyStatsDoc.data();
+    const userStats = weeklyStats.userStats || {};
+    
+    return userStats[userId] || null;
+  } catch (error) {
+    console.error('Error getting user weekly stats:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get current week's summary statistics
+ * @returns {Object|null} Weekly summary stats or null if no data
+ */
+export async function getWeeklySummary() {
+  try {
+    const currentWeek = getWeekIdentifier();
+    const weeklyStatsRef = weeklyStatsCollection.doc(currentWeek);
+    const weeklyStatsDoc = await weeklyStatsRef.get();
+    
+    if (!weeklyStatsDoc.exists) {
+      return null;
+    }
+    
+    return weeklyStatsDoc.data();
+  } catch (error) {
+    console.error('Error getting weekly summary:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update weekly statistics (run in background)
+ * @param {Object} imageData - The image data being uploaded
+ */
+async function updateWeeklyStatsAsync(imageData) {
+  // Run this in background to avoid blocking user uploads
+  setTimeout(async () => {
+    try {
+      await updateWeeklyStats(imageData);
+    } catch (error) {
+      console.error('Background weekly stats update failed:', error);
+    }
+  }, 1000); // 1 second delay
+}
+
+/**
+ * Update weekly statistics for a user
+ * @param {Object} imageData - The image data being uploaded
+ */
+async function updateWeeklyStats(imageData) {
+  const userId = imageData.author.id;
+  const currentWeek = getWeekIdentifier();
+  const weeklyStatsRef = weeklyStatsCollection.doc(currentWeek);
+  
+  try {
+    await firestore.runTransaction(async (transaction) => {
+      const weeklyStatsDoc = await transaction.get(weeklyStatsRef);
+      
+      if (!weeklyStatsDoc.exists) {
+        // First upload of the week
+        const newWeeklyStats = {
+          weekId: currentWeek,
+          weekStart: getCurrentWeekStart(),
+          weekEnd: getNextWeekStart(),
+          userStats: {
+            [userId]: {
+              userId: userId,
+              username: imageData.author.username,
+              displayName: imageData.author.displayName,
+              uploadCount: 1,
+              totalSize: imageData.size,
+              lastUpdated: Date.now()
+            }
+          },
+          totalUploads: 1,
+          totalUsers: 1,
+          lastUpdated: Date.now()
+        };
+        transaction.set(weeklyStatsRef, newWeeklyStats);
+      } else {
+        // Update existing weekly stats
+        const currentWeeklyStats = weeklyStatsDoc.data();
+        const userStats = currentWeeklyStats.userStats || {};
+        
+        if (!userStats[userId]) {
+          // First upload for this user this week
+          userStats[userId] = {
+            userId: userId,
+            username: imageData.author.username,
+            displayName: imageData.author.displayName,
+            uploadCount: 1,
+            totalSize: imageData.size,
+            lastUpdated: Date.now()
+          };
+          currentWeeklyStats.totalUsers = Object.keys(userStats).length;
+        } else {
+          // Update existing user stats for this week
+          userStats[userId].uploadCount += 1;
+          userStats[userId].totalSize += imageData.size;
+          userStats[userId].lastUpdated = Date.now();
+        }
+        
+        currentWeeklyStats.userStats = userStats;
+        currentWeeklyStats.totalUploads += 1;
+        currentWeeklyStats.lastUpdated = Date.now();
+        
+        transaction.update(weeklyStatsRef, currentWeeklyStats);
+      }
+    });
+  } catch (error) {
+    console.error('Error updating weekly stats:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update weekly statistics on deletion (run in background)
+ * @param {Object} imageData - The image data being deleted
+ */
+async function updateWeeklyStatsOnDeleteAsync(imageData) {
+  // Run this in background to avoid blocking user deletions
+  setTimeout(async () => {
+    try {
+      await updateWeeklyStatsOnDelete(imageData);
+    } catch (error) {
+      console.error('Background weekly stats deletion update failed:', error);
+    }
+  }, 1000); // 1 second delay
+}
+
+/**
+ * Update weekly statistics when an image is deleted
+ * @param {Object} imageData - The image data being deleted
+ */
+async function updateWeeklyStatsOnDelete(imageData) {
+  const userId = imageData.author.id;
+  const currentWeek = getWeekIdentifier();
+  const weeklyStatsRef = weeklyStatsCollection.doc(currentWeek);
+  
+  try {
+    await firestore.runTransaction(async (transaction) => {
+      const weeklyStatsDoc = await transaction.get(weeklyStatsRef);
+      
+      if (!weeklyStatsDoc.exists) {
+        // No weekly stats for this week, nothing to update
+        return;
+      }
+      
+      const currentWeeklyStats = weeklyStatsDoc.data();
+      const userStats = currentWeeklyStats.userStats || {};
+      
+      if (!userStats[userId]) {
+        // User has no stats for this week, nothing to update
+        return;
+      }
+      
+      // Update user stats for this week
+      userStats[userId].uploadCount = Math.max(0, userStats[userId].uploadCount - 1);
+      userStats[userId].totalSize = Math.max(0, userStats[userId].totalSize - imageData.size);
+      userStats[userId].lastUpdated = Date.now();
+      
+      // Remove user if they have no uploads left this week
+      if (userStats[userId].uploadCount === 0) {
+        delete userStats[userId];
+        currentWeeklyStats.totalUsers = Object.keys(userStats).length;
+      }
+      
+      currentWeeklyStats.userStats = userStats;
+      currentWeeklyStats.totalUploads = Math.max(0, currentWeeklyStats.totalUploads - 1);
+      currentWeeklyStats.lastUpdated = Date.now();
+      
+      transaction.update(weeklyStatsRef, currentWeeklyStats);
+    });
+  } catch (error) {
+    console.error('Error updating weekly stats on deletion:', error);
+    throw error;
+  }
+}
+
+/**
  * Update server-wide statistics (run periodically or on upload)
  */
 async function updateServerStatsAsync() {
@@ -290,6 +571,9 @@ export async function updateUserStatsOnDelete(imageData) {
       
       transaction.update(userStatsRef, updatedStats);
     });
+    
+    // Update weekly stats on deletion (non-blocking)
+    updateWeeklyStatsOnDeleteAsync(imageData);
     
     // Schedule server stats update (non-blocking)
     updateServerStatsAsync();

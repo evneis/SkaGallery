@@ -17,6 +17,3 @@
 
 - Collage Updates
     - Allow choosing different sizes of collages
-
-- Stats Updates
-    - Make leaderboard weekly
