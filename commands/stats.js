@@ -5,7 +5,12 @@ import {
   getServerStats, 
   calculateUploadFrequency,
   getTopUsers,
-  refreshServerStats 
+  refreshServerStats,
+  getWeeklyTopUsers,
+  getDaysUntilReset,
+  getWeekIdentifier,
+  getUserWeeklyStats,
+  getWeeklySummary
 } from '../utils/statsManager.js';
 import { runMigrationSafely, checkMigrationStatus } from '../utils/statsMigration.js';
 
@@ -66,7 +71,10 @@ export async function execute(interaction) {
 }
 
 async function showPersonalStats(interaction, user) {
-  const userStats = await getUserStats(user.id);
+  const [userStats, userWeeklyStats] = await Promise.all([
+    getUserStats(user.id),
+    getUserWeeklyStats(user.id)
+  ]);
   
   if (!userStats) {
     const embed = new EmbedBuilder()
@@ -126,6 +134,17 @@ async function showPersonalStats(interaction, user) {
         inline: true 
       }
     );
+  
+  // Add weekly stats if available
+  if (userWeeklyStats) {
+    embed.addFields(
+      {
+        name: '📅 This Week',
+        value: `**${userWeeklyStats.uploadCount}** uploads`,
+        inline: true
+      }
+    );
+  }
   
   if (topContentType) {
     embed.addFields({
@@ -220,36 +239,65 @@ async function showRankings(interaction, user) {
 }
 
 async function showLeaderboard(interaction) {
-  const topUploaders = await getTopUsers('uploadCount', 5);
+  const [topUploaders, weeklyTopUsers] = await Promise.all([
+    getTopUsers('uploadCount', 5),
+    getWeeklyTopUsers(5)
+  ]);
+  
+  const daysUntilReset = getDaysUntilReset();
+  const currentWeek = getWeekIdentifier();
   
   const embed = new EmbedBuilder()
     .setColor(0xF39C12)
     .setTitle('🏆 Gallery Leaderboards')
-    .setDescription('Top performers in the gallery!');
+    .setDescription(`Week ${currentWeek} • Resets in **${daysUntilReset.toFixed(1)} days**`);
   
-  // Top uploaders
-  if (topUploaders.length > 0) {
-    const uploadersText = topUploaders.map((user, index) => {
+  // Weekly top uploaders
+  if (weeklyTopUsers.length > 0) {
+    const weeklyUploadersText = weeklyTopUsers.map((user, index) => {
       const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][index] || `${index + 1}️⃣`;
       return `${medal} **${user.displayName || user.username}** - ${user.uploadCount.toLocaleString()} uploads`;
     }).join('\n');
     
     embed.addFields({
-      name: '📸 Most Uploads',
-      value: uploadersText,
+      name: '📸 This Week\'s Top Uploaders',
+      value: weeklyUploadersText,
+      inline: false
+    });
+  } else {
+    embed.addFields({
+      name: '📸 This Week\'s Top Uploaders',
+      value: 'No uploads this week yet! Be the first to upload! 🎯',
+      inline: false
+    });
+  }
+  
+  // All-time top uploaders (smaller section)
+  if (topUploaders.length > 0) {
+    const allTimeText = topUploaders.map((user, index) => {
+      const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][index] || `${index + 1}️⃣`;
+      return `${medal} **${user.displayName || user.username}** - ${user.uploadCount.toLocaleString()} uploads`;
+    }).join('\n');
+    
+    embed.addFields({
+      name: '🏆 All-Time Champions',
+      value: allTimeText,
       inline: false
     });
   }
   
   embed.setFooter({ 
-    text: 'Use /stats type:server for overall server statistics' 
+    text: `Weekly leaderboard resets every Monday • Use /stats type:server for overall statistics` 
   });
   
   await interaction.editReply({ embeds: [embed] });
 }
 
 async function showServerStats(interaction) {
-  const serverStats = await getServerStats();
+  const [serverStats, weeklySummary] = await Promise.all([
+    getServerStats(),
+    getWeeklySummary()
+  ]);
   
   const formatBytes = (bytes) => {
     if (bytes === 0) return '0 B';
@@ -285,6 +333,17 @@ async function showServerStats(interaction) {
         inline: true
       }
     );
+  
+  // Add weekly stats if available
+  if (weeklySummary) {
+    embed.addFields(
+      {
+        name: '📅 This Week',
+        value: `**${weeklySummary.totalUploads}** uploads by **${weeklySummary.totalUsers}** users`,
+        inline: true
+      }
+    );
+  }
   
   // Add content type breakdown
   if (serverStats.contentTypeStats) {
