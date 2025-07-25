@@ -245,12 +245,14 @@ async function showLeaderboard(interaction) {
   ]);
   
   const daysUntilReset = getDaysUntilReset();
+  // Format - 2025-W04
   const currentWeek = getWeekIdentifier();
   
   const embed = new EmbedBuilder()
     .setColor(0xF39C12)
     .setTitle('🏆 Gallery Leaderboards')
-    .setDescription(`Week ${currentWeek} • Resets in **${daysUntilReset.toFixed(1)} days**`);
+    //TODO Should it not show the current week? It's wrong anyway
+    .setDescription(`Weekly stats reset in **${Math.round(daysUntilReset)} days**`);
   
   // Weekly top uploaders
   if (weeklyTopUsers.length > 0) {
