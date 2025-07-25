@@ -252,6 +252,7 @@ async function showLeaderboard(interaction) {
     .setColor(0xF39C12)
     .setTitle('🏆 Gallery Leaderboards')
     //TODO Should it not show the current week? It's wrong anyway
+    //.setDescription(`Current week: ${currentWeek}`) - Figure out how to make currentWeek correct
     .setDescription(`Weekly stats reset in **${Math.round(daysUntilReset)} days**`);
   
   // Weekly top uploaders
