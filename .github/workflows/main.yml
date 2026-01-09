@@ -15,6 +15,8 @@ jobs:
         continue-on-error: true
         uses: appleboy/ssh-action@master
         with:
+          # NOTE: The host IP changes every few months and must be updated in GitHub secrets (VM_HOST).
+          # Found in network interfaces section of the VM.
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
