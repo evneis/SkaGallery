@@ -87,7 +87,7 @@ client.once(Events.ClientReady, readyClient => {
   
   // Set the bot's status
   readyClient.user.setPresence({
-    activities: [{ name: 'you', type: ActivityType.Watching }],
+    activities: [{ name: 'looking at your cool images and gifs :)', type: ActivityType.Watching }],
     status: 'online',
   });
 });
