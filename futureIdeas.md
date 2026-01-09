@@ -1,3 +1,7 @@
+# Near future ideas
+- /randomgif and /randomimg commands
+    - do the same with /react
+
 # Ideas for the future
 - Upvote/Downvote system with /top and /bottom commands
 - Random image of the day

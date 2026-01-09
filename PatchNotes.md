@@ -1,4 +1,5 @@
-v0.8
+v1.0
+- Incrementing to 1.0 since it has been sitting without failures for a while
 
-- New stats command with many options for various user and server statistics
-- Fixed broken activity status
+- Adjusted stats calculations to avoid silent errors for gifs (no file size = undefined)
+- /random and /react can now be filtered by type (image or gif)
