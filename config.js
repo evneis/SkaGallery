@@ -14,8 +14,6 @@ export default {
   guildIds: process.env.GUILD_IDS ? process.env.GUILD_IDS.split(',').map(id => id.trim()) : 
             (process.env.GUILD_ID ? [process.env.GUILD_ID] : []),
   
-  // Gallery configuration
-  galleryChannelId: process.env.GALLERY_CHANNEL_ID,
   //storageDir: process.env.STORAGE_DIR || './images',
   
   // Firebase configuration

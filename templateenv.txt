@@ -14,10 +14,6 @@ CLIENT_ID=your_client_id_here
 # Comma-separated list of guild IDs for deploying commands to multiple servers
 # GUILD_IDS=guild_id_1,guild_id_2,guild_id_3
 
-# Gallery Channel ID (Required)
-# Right-click on your channel and click "Copy ID"
-GALLERY_CHANNEL_ID=your_channel_id_here
-
 # Storage Directory (Optional)
 # Defaults to ./images if not specified
 STORAGE_DIR=./images
