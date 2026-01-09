@@ -192,7 +192,7 @@ export async function execute(message) {
               },
               messageId: message.id,
               messageLink: message.url,
-              contentType: attachment.contentType
+              contentType: attachment.contentType || 'gif'
             };
             
             // Save the URL

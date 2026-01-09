@@ -4,16 +4,28 @@ import { postImageById } from '../utils/imagePostHandler.js';
 
 export const data = new SlashCommandBuilder()
   .setName('random')
-  .setDescription('Get a random image from the gallery');
+  .setDescription('Get a random image from the gallery')
+  .addStringOption(option =>
+    option
+      .setName('type')
+      .setDescription('Filter by image type')
+      .setRequired(false)
+      .addChoices(
+        { name: 'Image', value: 'img' },
+        { name: 'GIF', value: 'gif' }
+      )
+  );
 
 export async function execute(interaction) {
   await interaction.deferReply();
   
   try {
-    const randomImageId = await getRandomImageId();
+    const type = interaction.options.getString('type');
+    const randomImageId = await getRandomImageId(type || null);
     
     if (!randomImageId) {
-      return interaction.editReply('No images found in the gallery!');
+      const typeMessage = type === 'gif' ? 'GIFs' : type === 'img' ? 'images' : '';
+      return interaction.editReply(`No ${typeMessage} found in the gallery!`);
     }
     
     await postImageById(interaction, randomImageId);

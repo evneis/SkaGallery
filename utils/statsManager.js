@@ -69,6 +69,8 @@ export async function updateUserStatsOnUpload(imageData) {
     await firestore.runTransaction(async (transaction) => {
       const userStatsDoc = await transaction.get(userStatsRef);
       
+      const imageSize = imageData.size || 0;
+      
       if (!userStatsDoc.exists) {
         // First time user
         const newStats = {
@@ -76,8 +78,8 @@ export async function updateUserStatsOnUpload(imageData) {
           username: imageData.author.username,
           displayName: imageData.author.displayName,
           uploadCount: 1,
-          totalSize: imageData.size,
-          avgSize: imageData.size,
+          totalSize: imageSize,
+          avgSize: imageSize,
           firstUpload: imageData.timestamp,
           lastUpload: imageData.timestamp,
           contentTypes: {
@@ -90,7 +92,7 @@ export async function updateUserStatsOnUpload(imageData) {
         // Update existing stats
         const currentStats = userStatsDoc.data();
         const newUploadCount = currentStats.uploadCount + 1;
-        const newTotalSize = currentStats.totalSize + imageData.size;
+        const newTotalSize = currentStats.totalSize + (imageSize || 0);
         
         const updatedStats = {
           username: imageData.author.username, // Update in case it changed
@@ -351,7 +353,7 @@ async function updateWeeklyStats(imageData) {
               username: imageData.author.username,
               displayName: imageData.author.displayName,
               uploadCount: 1,
-              totalSize: imageData.size,
+              totalSize: imageData.size || 0,
               lastUpdated: Date.now()
             }
           },
@@ -372,14 +374,15 @@ async function updateWeeklyStats(imageData) {
             username: imageData.author.username,
             displayName: imageData.author.displayName,
             uploadCount: 1,
-            totalSize: imageData.size,
+            totalSize: imageData.size || 0,
             lastUpdated: Date.now()
           };
           currentWeeklyStats.totalUsers = Object.keys(userStats).length;
         } else {
           // Update existing user stats for this week
           userStats[userId].uploadCount += 1;
-          userStats[userId].totalSize += imageData.size;
+          const imageSize = imageData.size || 0;
+          userStats[userId].totalSize = userStats[userId].totalSize  + (imageSize || 0);
           userStats[userId].lastUpdated = Date.now();
         }
         
@@ -439,7 +442,8 @@ async function updateWeeklyStatsOnDelete(imageData) {
       
       // Update user stats for this week
       userStats[userId].uploadCount = Math.max(0, userStats[userId].uploadCount - 1);
-      userStats[userId].totalSize = Math.max(0, userStats[userId].totalSize - imageData.size);
+      const imageSize = imageData.size || 0;
+      userStats[userId].totalSize = Math.max(0, userStats[userId].totalSize - (imageSize || 0));
       userStats[userId].lastUpdated = Date.now();
       
       // Remove user if they have no uploads left this week
@@ -549,8 +553,9 @@ export async function updateUserStatsOnDelete(imageData) {
       }
       
       const currentStats = userStatsDoc.data();
+      const imageSize = imageData.size || 0;
       const newUploadCount = Math.max(0, currentStats.uploadCount - 1);
-      const newTotalSize = Math.max(0, currentStats.totalSize - imageData.size);
+      const newTotalSize = Math.max(0, currentStats.totalSize - (imageSize || 0));
       
       const updatedStats = {
         uploadCount: newUploadCount,

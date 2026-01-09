@@ -216,20 +216,62 @@ export async function saveImageUrl(url, metadata = {}) {
 
 /**
  * Get a random image ID from the database
+ * @param {string|null} type - Optional filter: 'gif' for GIFs, 'img' for images, null for all
  * @returns {Promise<string|null>} - Random image ID or null if none exist
  */
-export async function getRandomImageId() {
+export async function getRandomImageId(type = null) {
   try {
-    // Get all image IDs (in a production app with many images, 
-    // you would implement a more efficient random selection)
-    const snapshot = await imagesCollection.get();
+    let imageIds = [];
 
-    if (snapshot.empty) {
-      return null;
+    if (type === 'gif') {
+      // For GIFs: Query by source field first (most efficient - uses indexed field)
+      const sourceQuery = await imagesCollection.where('source', '==', 'tenor').get();
+      const sourceIds = sourceQuery.docs.map(doc => doc.id);
+      
+      // Fallback: Also check documents without source field by URL pattern
+      // Since source field usually doesn't exist, we need this fallback
+      // Firestore can't query for missing fields, so we fetch all and filter client-side
+      // This is less efficient but necessary for completeness
+      const allSnapshot = await imagesCollection.get();
+      const missingSourceIds = allSnapshot.docs
+        .filter(doc => {
+          const data = doc.data();
+          // Include if source doesn't exist AND URL contains "tenor"
+          return !data.source && data.url && data.url.includes('tenor');
+        })
+        .map(doc => doc.id);
+      
+      // Combine both sets, avoiding duplicates
+      imageIds = [...new Set([...sourceIds, ...missingSourceIds])];
+    } else if (type === 'img') {
+      // For images: Query by source field for 'discord' and 'url' (uses indexed field)
+      const sourceQuery = await imagesCollection
+        .where('source', 'in', ['discord', 'url'])
+        .get();
+      const sourceIds = sourceQuery.docs.map(doc => doc.id);
+      
+      // Fallback: Also check documents without source field (excluding tenor URLs)
+      // Since source field usually doesn't exist, we need this fallback
+      const allSnapshot = await imagesCollection.get();
+      const missingSourceIds = allSnapshot.docs
+        .filter(doc => {
+          const data = doc.data();
+          // Include if source doesn't exist AND URL doesn't contain "tenor"
+          return !data.source && (!data.url || !data.url.includes('tenor'));
+        })
+        .map(doc => doc.id);
+      
+      // Combine both sets, avoiding duplicates
+      imageIds = [...new Set([...sourceIds, ...missingSourceIds])];
+    } else {
+      // No filter: get all images
+      const snapshot = await imagesCollection.get();
+      imageIds = snapshot.docs.map(doc => doc.id);
     }
 
-    // Get array of document IDs only
-    const imageIds = snapshot.docs.map(doc => doc.id);
+    if (imageIds.length === 0) {
+      return null;
+    }
 
     // Get random ID
     const randomIndex = Math.floor(Math.random() * imageIds.length);
